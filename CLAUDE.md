@@ -4,7 +4,7 @@ Suona ist ein Spiel, mit dem Kinder und Jugendliche (6 bis etwa 20 Jahre) das No
 
 Der Bauplan (fünf Pakete) liegt als Artifact „Suona Bauplan“ beim Besitzer. Kurzfassung:
 1. **Erste Töne** (fertig): Notensystem, „Wie heisst die Note?“, Profile, Münzen/Combo/Streak, einfacher Arcade, Lehrerbereich, Lehrpläne, Mikrofon-Test.
-2. **Griffbrett**: Note → Saite/Bund antippen und umgekehrt; Arcade mit Saiten, Bundbereich, Antwortart; Vorlagen.
+2. **Griffbrett** (fertig): vier Fragearten (`QuestionType`), Griffbrett-Übung auf der Startseite, Arcade mit Spielart, Lehrplan oder Saiten/Bünde, Vorzeichen, „Saite vorgeben“, Vorlagen.
 3. **Abenteuer**: Weltkarte mit 8 Stationen (Kinderzimmer, Garage, Schulaula, Jugendclub, Stadtfest, Tonstudio, Festival, Stadion), Charakter-Editor, Shop, Pedale als Fähigkeiten (Schild-Pedal wehrt einen Fehler ab, Kapodaster hält die Zeit an, Stimmgerät streicht zwei falsche Antworten). Die Töne pro Station kommen aus dem Lehrplan des Profils.
 4. **Echt spielen**: Tonerkennung über das Mikrofon (Grundlage `MicListener`/`PitchDetector` ist da).
 5. **Rhythmus, Tabs & Band**.
@@ -31,6 +31,15 @@ Der Bauplan (fünf Pakete) liegt als Artifact „Suona Bauplan“ beim Besitzer.
 - Notenschrift: Bravura (SMuFL, `assets/fonts/Bravura.otf`, OFL). Grösse = 4 Linienabstände pro Schriftgrösse, Bezugspunkt der Zeichen ist die Grundlinie (`StaffPainter._glyph`). Das Notensystem malt Linien/Schlüssel und Noten getrennt (`drawStaff`/`drawNotes`), damit beim Wechsel nur die Note hereinrutscht.
 - Standardstimmung und Griffbrett bis 12. Bund: `guitar.dart` (Saite 1 = hohe e-Saite).
 
+## Griffbrett (Paket 2)
+- Fragearten (`core/game/question.dart`): `nameFromStaff` (Note → Name), `fretFromStaff` (Note → Stelle antippen), `nameFromFret` (Punkt → Name), `staffFromFret` (Punkt → Note ins Notensystem setzen). `QuestionFactory` baut eine Frage zu einem Ton.
+- Ohne Griffbrett-Bereich (Übung nach Lehrplan) zählt jede Stelle bis zum 12. Bund, und gezeigt wird die tiefste Stelle (so lernt man den Ton zuerst). Mit Bereich (`FretRange`: Saiten, Bünde) nur Stellen darin, gezeigt wird eine zufällige.
+- Vom Griffbrett aus ist die Schreibweise offen: Fis und Ges zählen beide (`isRightName(enharmonicOk:)`, beim Setzen zählt der Klang).
+- Lernkartei getrennt: Notenlesen ohne Präfix, Griffbrett mit `G:` (`NoteStatsPrefix.fretboard`). Der Lehrerbereich zeigt beides.
+- `Fretboard` (`widgets/fretboard.dart`): gleich breite Bünde (leichter zu treffen), links die leeren Saiten, Einlagen 3/5/7/9/12. Einstellung „Tiefe E-Saite oben“ (`lowStringOnTop`), Standard wie Tabulatur (hohe e-Saite oben). Ein falsch angetippter Punkt zeigt, welcher Ton dort liegt.
+- `StaffTapArea` (`widgets/staff.dart`) macht das Notensystem antippbar (`stepAt`), `pitchFromStaffStep` rechnet zurück.
+- Arcade (`core/game/arcade_settings.dart`): Spielart `ArcadeAnswer` (Rekord pro Art in `Profile.arcadeBests`, altes Feld `arcadeBest` wird übernommen), Töne nach Lehrplan oder nach Saiten/Bünden, Tempo. Eingebaute Vorlagen ändern nur den Bereich, eigene Vorlagen (alles) speichert die Lehrperson hinter der Sperre (`passTeacherGate`) in `arcade_vorlagen.json`, löschen im Lehrerbereich unter „Lehrpläne“.
+
 ## Lehrpläne
 - `Curriculum` = Schritte mit **neuen** Tönen. Eingebaut: guitarTALKS (Markus Engler), nur die Reihenfolge der Töne, keine Stücke oder Figuren aus dem Buch (Urheberrecht). Eigene Lehrpläne legt die Lehrperson an (`curriculum_editor.dart`), z. B. „Play Guitar Junior“ (macht der Besitzer selbst).
 - Jedes Profil hat `curriculumId` und `step` (wie weit das Kind ist, setzt die Lehrperson). Üben nimmt alle Töne bis `step`, die neuen Töne des aktuellen Schritts kommen doppelt so oft.
@@ -46,7 +55,7 @@ Der Bauplan (fünf Pakete) liegt als Artifact „Suona Bauplan“ beim Besitzer.
 Alles im Datenordner der App (`getApplicationSupportDirectory`, unter Windows `%APPDATA%\Suona\Suona`):
 - `Spielstaende/<id>.json` (Format `suona-profil` v1)
 - `Lehrplaene/<id>.json` (Format `suona-lehrplan` v1)
-- `einstellungen.json`, `fehler.log`, `update.log`
+- `einstellungen.json`, `arcade_vorlagen.json`, `fehler.log`, `update.log`
 Geschrieben wird immer über eine Zwischendatei (`json_files.dart`).
 
 ## Aufbau
@@ -60,8 +69,9 @@ lib/
     audio/     Klänge, Tonerkennung, Mikrofon
     suona_state.dart  Zustand der App (SuonaScope)
   features/    start (Wer spielt?), home, quiz (Üben + Arcade, Ergebnis), arcade (Einstellungen), teacher (Lehrerbereich)
-  widgets/     Bühne, Figuren, Münzen, Notensystem
-assets/characters/  Luna und Fuzz als SVG (ganz und nur Gesicht)
+  widgets/     Bühne, Figuren, Münzen, Notensystem, Griffbrett
+assets/characters/  Luna und Fuzz als SVG (ganz und nur Gesicht). Fuzz: kurze Seiten, oben stachlig.
+                    Anschlagarm liegt vor der Gitarre, Greifarm hinter dem Hals (Wunsch des Besitzers).
 tool/make_icon.py   erzeugt das App-Symbol (Windows .ico, Android)
 ```
 

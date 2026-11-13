@@ -11,7 +11,7 @@
           <path d="M106 184 H178 L188 212 H96 Z" fill="#FF6B78"/>
           <path d="M100 206 H184" stroke="#F4F2FF" stroke-width="2" stroke-dasharray="4 4" opacity="0.7"/>
           <path d="M114 130 L168 174" stroke="#2B2340" stroke-width="5" stroke-linecap="round"/>
-          <path d="M112 138 Q96 168 128 186" stroke="#E8B08A" stroke-width="13" fill="none" stroke-linecap="round"/>
+          <path d="M172 138 Q194 152 200 140" stroke="#E8B08A" stroke-width="13" fill="none" stroke-linecap="round"/>
           <g transform="rotate(-28 132 182)">
             <rect x="150" y="178" width="92" height="8" rx="2" fill="#7A4A26"/>
             <rect x="240" y="174" width="22" height="16" rx="4" fill="#F4F2FF"/>
@@ -28,7 +28,7 @@
             <g fill="#FFC233"><circle cx="102" cy="194" r="2.2"/><circle cx="110" cy="200" r="2.2"/></g>
             <g stroke="#F4F2FF" stroke-width="0.7" opacity="0.9"><line x1="106" y1="179" x2="258" y2="179"/><line x1="106" y1="182" x2="258" y2="182"/><line x1="106" y1="185" x2="258" y2="185"/></g>
           </g>
-          <path d="M172 138 Q194 152 200 140" stroke="#E8B08A" stroke-width="13" fill="none" stroke-linecap="round"/>
+          <path d="M112 138 Q96 168 128 186" stroke="#E8B08A" stroke-width="13" fill="none" stroke-linecap="round"/>
           <rect x="114" y="176" width="10" height="8" rx="2" fill="#FFC233" transform="rotate(40 119 180)"/>
           <circle cx="132" cy="186" r="9" fill="#E8B08A"/>
           <circle cx="202" cy="138" r="8.5" fill="#E8B08A"/>

@@ -5,6 +5,7 @@ import '../../app/error_log.dart';
 import '../../app/l10n.dart';
 import '../../app/theme.dart';
 import '../../app/version.dart';
+import '../../core/game/question.dart';
 import '../../core/music/curriculum.dart';
 import '../../core/music/note_names.dart';
 import '../../core/profiles/profile.dart';
@@ -152,9 +153,20 @@ class _ProfileCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 14),
-            Text(tr('Lernstand', 'Progress'), style: theme.textTheme.titleMedium),
+            Text(tr('Lernstand Noten lesen', 'Progress: reading notes'), style: theme.textTheme.titleMedium),
             const SizedBox(height: 6),
             _Mastery(profile: profile, curriculum: curriculum, step: step, naming: state.naming),
+            const SizedBox(height: 12),
+            Text(tr('Lernstand Griffbrett', 'Progress: fretboard'), style: theme.textTheme.titleMedium),
+            const SizedBox(height: 6),
+            _Mastery(
+              profile: profile,
+              curriculum: curriculum,
+              step: step,
+              naming: state.naming,
+              prefix: NoteStatsPrefix.fretboard,
+              legend: false,
+            ),
           ],
         ),
       ),
@@ -202,11 +214,20 @@ class _ProfileCard extends StatelessWidget {
 
 /// Töne des Lehrplans bis zum aktuellen Schritt, gefärbt nach Lernstand.
 class _Mastery extends StatelessWidget {
-  const _Mastery({required this.profile, required this.curriculum, required this.step, required this.naming});
+  const _Mastery({
+    required this.profile,
+    required this.curriculum,
+    required this.step,
+    required this.naming,
+    this.prefix = '',
+    this.legend = true,
+  });
   final Profile profile;
   final Curriculum curriculum;
   final int step;
   final NoteNaming naming;
+  final String prefix;
+  final bool legend;
 
   @override
   Widget build(BuildContext context) {
@@ -228,7 +249,7 @@ class _Mastery extends StatelessWidget {
             for (final n in notes)
               Builder(
                 builder: (_) {
-                  final s = profile.stats.of(n);
+                  final s = profile.stats.of(n, prefix: prefix);
                   return Tooltip(
                     message: tr('${s.correct} von ${s.seen} richtig', '${s.correct} of ${s.seen} right'),
                     child: Container(
@@ -241,14 +262,15 @@ class _Mastery extends StatelessWidget {
               ),
           ],
         ),
-        const SizedBox(height: 6),
-        Text(
-          tr(
-            'Grün: sitzt · Gelb: wird sicherer · Rot: noch unsicher · Grau: noch nie gezeigt',
-            'Green: secure · Yellow: getting there · Red: still unsure · Grey: not shown yet',
+        if (legend) const SizedBox(height: 6),
+        if (legend)
+          Text(
+            tr(
+              'Grün: sitzt · Gelb: wird sicherer · Rot: noch unsicher · Grau: noch nie gezeigt',
+              'Green: secure · Yellow: getting there · Red: still unsure · Grey: not shown yet',
+            ),
+            style: const TextStyle(color: SuonaColors.inkMuted, fontSize: 13),
           ),
-          style: const TextStyle(color: SuonaColors.inkMuted, fontSize: 13),
-        ),
       ],
     );
   }
@@ -348,6 +370,45 @@ class _CurriculaTab extends StatelessWidget {
             label: Text(tr('Neuer Lehrplan', 'New curriculum')),
           ),
         ),
+        const SizedBox(height: 32),
+        Text(tr('Arcade-Vorlagen', 'Arcade presets'), style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 4),
+        Text(
+          tr(
+            'Eigene Vorlagen speicherst du in den Arcade-Einstellungen eines Profils („Als Vorlage speichern“). Sie stehen dann allen Profilen auf diesem Gerät zur Verfügung.',
+            'Save your own presets in a profile’s arcade settings (“Save as preset”). They are then available to all profiles on this device.',
+          ),
+          style: const TextStyle(color: SuonaColors.inkMuted),
+        ),
+        const SizedBox(height: 8),
+        if (state.customArcadePresets.isEmpty) Text(tr('Noch keine eigenen Vorlagen.', 'No presets of your own yet.')),
+        for (final p in state.customArcadePresets)
+          Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: ListTile(
+              leading: const Icon(Icons.bookmark_rounded),
+              title: Text(p.name, style: Theme.of(context).textTheme.titleMedium),
+              subtitle: Text(
+                '${p.settings.answer.label} · ${p.settings.byCurriculum ? tr('nach Lehrplan', 'by curriculum') : tr('Bund ${p.settings.range.minFret}–${p.settings.range.maxFret}', 'frets ${p.settings.range.minFret}–${p.settings.range.maxFret}')} · ${p.settings.speed.label}',
+              ),
+              trailing: IconButton(
+                tooltip: tr('Löschen', 'Delete'),
+                icon: const Icon(Icons.delete_outline_rounded),
+                onPressed: () async {
+                  if (await _confirm(
+                    context,
+                    tr('Vorlage „${p.name}“ löschen?', 'Delete preset “${p.name}”?'),
+                    tr(
+                      'Die Spielstände bleiben, nur die Vorlage verschwindet.',
+                      'Game progress stays, only the preset is removed.',
+                    ),
+                  )) {
+                    await state.deleteArcadePreset(p);
+                  }
+                },
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -412,6 +473,24 @@ class _SettingsTab extends StatelessWidget {
             ],
             selected: {s.accidentals},
             onSelectionChanged: (v) => state.updateSettings((x) => x.accidentals = v.first),
+          ),
+        ),
+        section(
+          tr('Griffbrett', 'Fretboard'),
+          tr('Welche Saite oben liegt.', 'Which string is at the top.'),
+          SegmentedButton<bool>(
+            segments: [
+              ButtonSegment(
+                value: false,
+                label: Text(tr('Hohe e-Saite oben (wie Tabulatur)', 'High E string on top (like tab)')),
+              ),
+              ButtonSegment(
+                value: true,
+                label: Text(tr('Tiefe E-Saite oben (Blick auf die Gitarre)', 'Low E string on top (looking down)')),
+              ),
+            ],
+            selected: {s.lowStringOnTop},
+            onSelectionChanged: (v) => state.updateSettings((x) => x.lowStringOnTop = v.first),
           ),
         ),
         section(

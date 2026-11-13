@@ -9,10 +9,17 @@ import 'teacher_screen.dart';
 /// Öffnet den Lehrerbereich hinter einer kleinen Sperre: eine
 /// Rechenaufgabe, die jüngere Kinder noch nicht lösen (Eltern-Sperre).
 Future<void> openTeacherArea(BuildContext context) async {
-  final ok = await showDialog<bool>(context: context, builder: (_) => const _GateDialog());
-  if (ok == true && context.mounted) {
+  final ok = await passTeacherGate(context);
+  if (ok && context.mounted) {
     await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TeacherScreen()));
   }
+}
+
+/// Nur die Sperre: true, wenn die Rechenaufgabe gelöst wurde. Für Dinge,
+/// die nur Erwachsene tun sollen (z. B. eine Arcade-Vorlage speichern).
+Future<bool> passTeacherGate(BuildContext context) async {
+  final ok = await showDialog<bool>(context: context, builder: (_) => const _GateDialog());
+  return ok == true;
 }
 
 class _GateDialog extends StatefulWidget {

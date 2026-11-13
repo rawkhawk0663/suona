@@ -33,15 +33,38 @@ class HomeScreen extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        StageTile(
-          title: tr('Üben', 'Practise'),
-          subtitle: tr('Wie heisst die Note? · 10 Töne', 'Name that note · 10 notes'),
-          icon: Icons.music_note_rounded,
-          color: SuonaColors.red,
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => QuizScreen(profileId: profile.id, config: QuizConfig.practice()),
-            ),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: StageTile(
+                  title: tr('Noten lesen', 'Read notes'),
+                  subtitle: tr('Wie heisst die Note?', 'Name that note'),
+                  icon: Icons.music_note_rounded,
+                  color: SuonaColors.red,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => QuizScreen(profileId: profile.id, config: QuizConfig.practice()),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: StageTile(
+                  title: tr('Griffbrett', 'Fretboard'),
+                  subtitle: tr('Wo liegt die Note?', 'Where is the note?'),
+                  icon: Icons.touch_app_rounded,
+                  color: SuonaColors.teal,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => QuizScreen(profileId: profile.id, config: QuizConfig.fretboardPractice()),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 14),
@@ -64,7 +87,7 @@ class HomeScreen extends StatelessWidget {
                 title: tr('Abenteuer', 'Adventure'),
                 subtitle: tr('Kommt bald', 'Coming soon'),
                 icon: Icons.map_rounded,
-                color: SuonaColors.teal,
+                color: SuonaColors.coral,
                 locked: true,
               ),
             ),
@@ -74,7 +97,7 @@ class HomeScreen extends StatelessWidget {
                 title: 'Shop',
                 subtitle: tr('Kommt bald', 'Coming soon'),
                 icon: Icons.storefront_rounded,
-                color: SuonaColors.teal,
+                color: SuonaColors.coral,
                 locked: true,
               ),
             ),

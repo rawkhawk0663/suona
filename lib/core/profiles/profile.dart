@@ -24,12 +24,16 @@ class Profile {
     this.coins = 0,
     DailyStreak? streak,
     NoteStats? stats,
-    this.arcadeBest = 0,
+    int arcadeBest = 0,
+    Map<String, int>? arcadeBests,
     this.totalCorrect = 0,
     this.roundsPlayed = 0,
     DateTime? created,
   }) : streak = streak ?? DailyStreak(),
        stats = stats ?? NoteStats(),
+       arcadeBests = (arcadeBests == null || arcadeBests.isEmpty)
+           ? {if (arcadeBest > 0) 'name': arcadeBest}
+           : arcadeBests,
        created = created ?? DateTime.now();
 
   final String id;
@@ -43,7 +47,13 @@ class Profile {
   int coins;
   final DailyStreak streak;
   final NoteStats stats;
-  int arcadeBest;
+
+  /// Arcade-Rekorde pro Spielart (Schlüssel wie `ArcadeAnswer.name`).
+  final Map<String, int> arcadeBests;
+
+  /// Bester Rekord über alle Arcade-Arten.
+  int get arcadeBest => arcadeBests.values.fold(0, (a, b) => a > b ? a : b);
+
   int totalCorrect;
   int roundsPlayed;
   final DateTime created;
@@ -59,7 +69,7 @@ class Profile {
     'coins': coins,
     'streak': streak.toJson(),
     'stats': stats.toJson(),
-    'arcadeBest': arcadeBest,
+    'arcadeBests': arcadeBests,
     'totalCorrect': totalCorrect,
     'roundsPlayed': roundsPlayed,
     'created': created.toIso8601String(),
@@ -75,6 +85,10 @@ class Profile {
     streak: DailyStreak.fromJson(j['streak'] as Map<String, dynamic>?),
     stats: NoteStats.fromJson(j['stats'] as Map<String, dynamic>?),
     arcadeBest: (j['arcadeBest'] as num?)?.toInt() ?? 0,
+    arcadeBests: {
+      for (final e in ((j['arcadeBests'] as Map<String, dynamic>?) ?? const {}).entries)
+        e.key: (e.value as num).toInt(),
+    },
     totalCorrect: (j['totalCorrect'] as num?)?.toInt() ?? 0,
     roundsPlayed: (j['roundsPlayed'] as num?)?.toInt() ?? 0,
     created: DateTime.tryParse(j['created'] as String? ?? ''),

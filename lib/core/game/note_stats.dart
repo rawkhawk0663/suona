@@ -30,10 +30,11 @@ class NoteStats {
 
   final Map<String, NoteStat> map;
 
-  NoteStat of(Pitch p) => map[p.key] ?? NoteStat();
+  /// [prefix] trennt Wissensarten: '' = Notenlesen, 'G:' = Griffbrett.
+  NoteStat of(Pitch p, {String prefix = ''}) => map['$prefix${p.key}'] ?? NoteStat();
 
-  void record(Pitch p, {required bool correct}) {
-    final s = map.putIfAbsent(p.key, NoteStat.new);
+  void record(Pitch p, {required bool correct, String prefix = ''}) {
+    final s = map.putIfAbsent('$prefix${p.key}', NoteStat.new);
     s.seen++;
     if (correct) {
       s.correct++;
@@ -44,8 +45,8 @@ class NoteStats {
   }
 
   /// Wie oft ein Ton drankommt: unsichere Töne öfter.
-  double weightOf(Pitch p) {
-    final s = map[p.key];
+  double weightOf(Pitch p, {String prefix = ''}) {
+    final s = map['$prefix${p.key}'];
     if (s == null) return 3.0; // noch nie gesehen: eher bald zeigen
     return 1.0 + (NoteStat.maxBox - s.box) * 1.2;
   }
@@ -58,7 +59,7 @@ class NoteStats {
 
 /// Wählt den nächsten Ton aus einem Vorrat.
 class NotePicker {
-  NotePicker({required this.pool, required this.stats, this.focus = const {}, Random? random})
+  NotePicker({required this.pool, required this.stats, this.focus = const {}, this.prefix = '', Random? random})
     : _random = random ?? Random(),
       assert(pool.isNotEmpty);
 
@@ -67,12 +68,19 @@ class NotePicker {
 
   /// Neue Töne (aktueller Schritt im Lehrplan): kommen doppelt so oft.
   final Set<Pitch> focus;
+
+  /// Welcher Teil der Lernkartei zählt ('' = Notenlesen, 'G:' = Griffbrett).
+  final String prefix;
   final Random _random;
   Pitch? _last;
 
-  Pitch next() {
-    final candidates = pool.length > 1 ? pool.where((p) => p != _last).toList() : pool;
-    final weights = [for (final p in candidates) stats.weightOf(p) * (focus.contains(p) ? 2.0 : 1.0)];
+  /// Nächster Ton. [avoid]: zusätzlich nicht diesen (z. B. den letzten Ton
+  /// einer anderen Fragenart, damit nie derselbe Ton zweimal hintereinander kommt).
+  Pitch next({Pitch? avoid}) {
+    var candidates = pool.where((p) => p != _last && p != avoid).toList();
+    if (candidates.isEmpty) candidates = pool.where((p) => p != _last).toList();
+    if (candidates.isEmpty) candidates = pool;
+    final weights = [for (final p in candidates) stats.weightOf(p, prefix: prefix) * (focus.contains(p) ? 2.0 : 1.0)];
     final total = weights.fold<double>(0, (a, b) => a + b);
     var r = _random.nextDouble() * total;
     for (var i = 0; i < candidates.length; i++) {

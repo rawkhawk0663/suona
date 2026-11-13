@@ -3,6 +3,7 @@ import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 
 import '../app/l10n.dart';
+import 'game/arcade_settings.dart';
 import 'music/curriculum.dart';
 import 'music/note_names.dart';
 import 'music/pitch.dart';
@@ -16,6 +17,7 @@ class SuonaSettings {
     this.naming = NoteNaming.german,
     this.accidentals = AccidentalStyle.mixed,
     this.sound = true,
+    this.lowStringOnTop = false,
   });
 
   /// Null = wie das System.
@@ -24,11 +26,16 @@ class SuonaSettings {
   AccidentalStyle accidentals;
   bool sound;
 
+  /// Griffbrett mit der tiefen E-Saite oben (Blick von oben auf die eigene
+  /// Gitarre). Sonst wie in der Tabulatur: hohe e-Saite oben.
+  bool lowStringOnTop;
+
   Map<String, dynamic> toJson() => {
     'language': language?.name,
     'naming': naming.name,
     'accidentals': accidentals.name,
     'sound': sound,
+    'lowStringOnTop': lowStringOnTop,
   };
 
   static SuonaSettings fromJson(Map<String, dynamic> j) => SuonaSettings(
@@ -36,6 +43,7 @@ class SuonaSettings {
     naming: NoteNaming.values.asNameMap()[j['naming']] ?? NoteNaming.german,
     accidentals: AccidentalStyle.values.asNameMap()[j['accidentals']] ?? AccidentalStyle.mixed,
     sound: j['sound'] as bool? ?? true,
+    lowStringOnTop: j['lowStringOnTop'] as bool? ?? false,
   );
 }
 
@@ -47,16 +55,19 @@ class SuonaState extends ChangeNotifier {
   SuonaState(this.dataDir)
     : _profilesDir = JsonFolder(p.join(dataDir, 'Spielstaende')),
       _curriculaDir = JsonFolder(p.join(dataDir, 'Lehrplaene')),
-      _settingsFile = JsonFile(p.join(dataDir, 'einstellungen.json'));
+      _settingsFile = JsonFile(p.join(dataDir, 'einstellungen.json')),
+      _presetsFile = JsonFile(p.join(dataDir, 'arcade_vorlagen.json'));
 
   final String dataDir;
   final JsonFolder _profilesDir;
   final JsonFolder _curriculaDir;
   final JsonFile _settingsFile;
+  final JsonFile _presetsFile;
 
   SuonaSettings settings = SuonaSettings();
   final List<Profile> profiles = [];
   final List<Curriculum> _custom = [];
+  final List<ArcadePreset> _presets = [];
   bool loaded = false;
 
   NoteNaming get naming => settings.naming;
@@ -78,9 +89,41 @@ class SuonaState extends ChangeNotifier {
           if (j['id'] is String) Curriculum.fromJson(j),
       ])
       ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    final presets = await _presetsFile.read();
+    _presets
+      ..clear()
+      ..addAll([
+        for (final j in (presets['presets'] as List<dynamic>? ?? const []))
+          if (j is Map<String, dynamic> && j['id'] is String) ArcadePreset.fromJson(j),
+      ]);
     loaded = true;
     notifyListeners();
   }
+
+  // ---------- Arcade-Vorlagen ----------
+
+  /// Eingebaute und eigene Vorlagen (eigene zuletzt).
+  List<ArcadePreset> get arcadePresets => [...ArcadePreset.builtIns, ..._presets];
+
+  List<ArcadePreset> get customArcadePresets => List.unmodifiable(_presets);
+
+  Future<void> saveArcadePreset(String name, ArcadeSettings settings) async {
+    _presets.add(ArcadePreset(id: const Uuid().v4(), name: name.trim(), settings: settings.copy()));
+    notifyListeners();
+    await _writePresets();
+  }
+
+  Future<void> deleteArcadePreset(ArcadePreset preset) async {
+    _presets.removeWhere((x) => x.id == preset.id);
+    notifyListeners();
+    await _writePresets();
+  }
+
+  Future<void> _writePresets() => _presetsFile.write({
+    'format': 'suona-arcade-vorlagen',
+    'version': 1,
+    'presets': [for (final x in _presets) x.toJson()],
+  });
 
   // ---------- Einstellungen ----------
 

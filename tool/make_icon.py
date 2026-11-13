@@ -28,9 +28,10 @@ def icon(size):
         hd.ellipse([x-66,y-46,x+66,y+46],fill=white)
         im=Image.alpha_composite(im,h.rotate(20,center=(x,y)))
     d=ImageDraw.Draw(im)
-    d.rectangle([452,350,478,632],fill=white)
-    d.rectangle([652,300,678,582],fill=white)
-    d.polygon([(452,350),(678,300),(678,366),(452,416)],fill=(255,194,51,255))
+    # Notenhälse und Balken in einem Stück, in derselben Farbe wie die Köpfe.
+    d.rectangle([452,360,478,632],fill=white)
+    d.rectangle([652,310,678,582],fill=white)
+    d.polygon([(452,330),(678,280),(678,350),(452,400)],fill=white)
     return im.resize((size,size),Image.LANCZOS)
 icon(1024).save(base+'/build/icon-preview.png')
 icon(256).save(base+'/windows/runner/resources/app_icon.ico',sizes=[(16,16),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)])

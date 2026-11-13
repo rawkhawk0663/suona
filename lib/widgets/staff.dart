@@ -161,3 +161,34 @@ class StaffPainter extends CustomPainter {
     return true;
   }
 }
+
+/// Notensystem zum Antippen: meldet die Stelle (Linie oder Zwischenraum),
+/// an die getippt wurde. Für „Note setzen“.
+class StaffTapArea extends StatelessWidget {
+  const StaffTapArea({super.key, required this.child, required this.onStep, this.minStep = -8, this.maxStep = 15});
+
+  final Widget child;
+  final ValueChanged<int>? onStep;
+  final int minStep;
+  final int maxStep;
+
+  /// Stelle zu einer Höhe im Notensystem der Höhe [height].
+  static int stepAt(double y, double height) {
+    final space = height / StaffPainter.spacesPerHeight;
+    final bottom = StaffPainter.bottomLineSpaces * space;
+    return ((bottom - y) / (space / 2)).round();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, c) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: onStep == null
+            ? null
+            : (d) => onStep!(stepAt(d.localPosition.dy, c.maxHeight).clamp(minStep, maxStep)),
+        child: MouseRegion(cursor: onStep == null ? MouseCursor.defer : SystemMouseCursors.click, child: child),
+      ),
+    );
+  }
+}

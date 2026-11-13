@@ -8,11 +8,14 @@ import '../../app/l10n.dart';
 import '../../app/theme.dart';
 import '../../core/audio/sounds.dart';
 import '../../core/game/note_stats.dart';
+import '../../core/game/question.dart';
 import '../../core/game/rewards.dart';
+import '../../core/music/guitar.dart';
 import '../../core/music/note_names.dart';
 import '../../core/music/pitch.dart';
 import '../../core/profiles/profile.dart';
 import '../../core/suona_state.dart';
+import '../../widgets/fretboard.dart';
 import '../../widgets/stage.dart';
 import '../../widgets/staff.dart';
 import 'result_screen.dart';
@@ -23,18 +26,28 @@ enum QuizMode { practice, arcade }
 class QuizConfig {
   const QuizConfig({
     required this.mode,
+    this.types = const [QuestionType.nameFromStaff],
     this.length = 10,
     this.timeLimit,
     this.pool,
     this.focus = const {},
     this.lives = 3,
-    this.label,
+    this.range,
+    this.fixedString = false,
+    this.recordKey = 'name',
   });
 
-  /// Übungsrunde: 10 Töne aus dem Lehrplan, ohne Zeitdruck.
+  /// Übungsrunde „Noten lesen“: 10 Töne aus dem Lehrplan, ohne Zeitdruck.
   factory QuizConfig.practice() => const QuizConfig(mode: QuizMode.practice);
 
+  /// Übungsrunde „Griffbrett“: abwechselnd Note → Griffbrett und Griffbrett → Name.
+  factory QuizConfig.fretboardPractice() =>
+      const QuizConfig(mode: QuizMode.practice, types: [QuestionType.fretFromStaff, QuestionType.nameFromFret]);
+
   final QuizMode mode;
+
+  /// Fragearten, zufällig gemischt.
+  final List<QuestionType> types;
 
   /// Anzahl Töne einer Übungsrunde.
   final int length;
@@ -49,11 +62,17 @@ class QuizConfig {
   /// Leben im Arcade-Modus.
   final int lives;
 
-  /// Beschreibung des Vorrats für die Ergebnisseite.
-  final String? label;
+  /// Griffbrett-Ausschnitt (null = ganzes Griffbrett).
+  final FretRange? range;
+
+  /// Bei „Wo liegt die Note?“ eine Saite vorgeben.
+  final bool fixedString;
+
+  /// Unter welchem Namen der Arcade-Rekord gespeichert wird.
+  final String recordKey;
 }
 
-/// „Wie heisst die Note?“ – eine Note erscheint, das Kind tippt den Namen.
+/// Eine Runde: Noten lesen, Griffbrett finden, Töne benennen oder setzen.
 class QuizScreen extends StatefulWidget {
   const QuizScreen({super.key, required this.profileId, required this.config});
   final String profileId;
@@ -68,17 +87,26 @@ enum _Phase { asking, correct, wrong }
 class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateMixin {
   late final SuonaState _state;
   late final Profile _profile;
-  late final NotePicker _picker;
+  late final List<Pitch> _pool;
+  late final Set<Pitch> _focus;
+  late final QuestionFactory _factory;
   late final bool _hasAccidentals;
   late final AnimationController _timer;
+  final _pickers = <String, NotePicker>{};
+  final _random = Random();
   final _combo = Combo();
   final _results = <bool>[];
   final _focusNode = FocusNode();
 
-  late Pitch _note;
+  late Question _q;
   Accidental _modifier = Accidental.natural;
   _Phase _phase = _Phase.asking;
-  Letter? _answered;
+
+  // Antworten
+  Letter? _answeredLetter;
+  FretPosition? _tapped;
+  int? _placedStep;
+
   int _coins = 0;
   int _lives = 3;
   int _lastGain = 0;
@@ -90,20 +118,21 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
 
   bool get _arcade => widget.config.mode == QuizMode.arcade;
   NoteNaming get _naming => _state.naming;
+  Pitch get _note => _q.pitch;
 
   @override
   void initState() {
     super.initState();
     _state = SuonaScope.read(context);
     _profile = _state.profiles.firstWhere((p) => p.id == widget.profileId);
-    final pool = widget.config.pool ?? _state.practicePool(_profile);
-    final focus = widget.config.pool == null ? _state.practiceFocus(_profile) : widget.config.focus;
-    _picker = NotePicker(pool: pool, stats: _profile.stats, focus: focus);
-    _hasAccidentals = pool.any((p) => p.hasAccidental);
+    _pool = widget.config.pool ?? _state.practicePool(_profile);
+    _focus = widget.config.pool == null ? _state.practiceFocus(_profile) : widget.config.focus;
+    _factory = QuestionFactory(range: widget.config.range, fixedString: widget.config.fixedString);
+    _hasAccidentals = _pool.any((p) => p.hasAccidental);
     _lives = widget.config.lives;
     _timer = AnimationController(vsync: this, duration: widget.config.timeLimit ?? const Duration(seconds: 1))
       ..addStatusListener((s) {
-        if (s == AnimationStatus.completed && _phase == _Phase.asking) _answer(null);
+        if (s == AnimationStatus.completed && _phase == _Phase.asking) _evaluate(false);
       });
     _ask();
   }
@@ -118,23 +147,57 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
     super.dispose();
   }
 
+  NotePicker _pickerFor(QuestionType t) => _pickers.putIfAbsent(
+    t.statsPrefix,
+    () => NotePicker(pool: _pool, stats: _profile.stats, focus: _focus, prefix: t.statsPrefix),
+  );
+
   void _ask() {
+    final types = widget.config.types;
+    final type = types[_random.nextInt(types.length)];
+    final last = _asked == 0 ? null : _q.pitch;
+    final pitch = _pickerFor(type).next(avoid: last);
     setState(() {
-      _note = _picker.next();
+      _q = _factory.build(type, pitch);
       _asked++;
       _phase = _Phase.asking;
-      _answered = null;
+      _answeredLetter = null;
+      _tapped = null;
+      _placedStep = null;
       _modifier = Accidental.natural;
     });
     if (widget.config.timeLimit != null) _timer.forward(from: 0);
   }
 
-  /// Antwort auswerten. [letter] null = Zeit abgelaufen.
-  void _answer(Letter? letter) {
+  // ---------- Antworten ----------
+
+  void _answerName(Letter l) {
+    if (_phase != _Phase.asking) return;
+    _answeredLetter = l;
+    // Vom Griffbrett aus ist die Schreibweise offen: Fis und Ges zählen beide.
+    _evaluate(isRightName(_note, l, _modifier, enharmonicOk: _q.type == QuestionType.nameFromFret));
+  }
+
+  void _answerFret(FretPosition p) {
+    if (_phase != _Phase.asking) return;
+    _tapped = p;
+    _evaluate(_q.accepted.contains(p));
+  }
+
+  void _placeNote(int step) {
+    if (_phase != _Phase.asking) return;
+    setState(() => _placedStep = step);
+  }
+
+  void _confirmStaff() {
+    if (_phase != _Phase.asking || _placedStep == null) return;
+    _evaluate(pitchFromStaffStep(_placedStep!, _modifier).midi == _note.midi);
+  }
+
+  void _evaluate(bool ok) {
     if (_phase != _Phase.asking || _finished) return;
     _timer.stop();
-    final ok = letter == _note.letter && _modifier == _note.accidental;
-    _profile.stats.record(_note, correct: ok);
+    _profile.stats.record(_note, correct: ok, prefix: _q.type.statsPrefix);
     _results.add(ok);
     if (ok) {
       _lastGain = _combo.hit();
@@ -150,12 +213,11 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
       unawaited(Sounds.instance.wrong());
       _next = Timer(const Duration(milliseconds: 450), () => Sounds.instance.pluck(_note.midi));
     }
-    setState(() {
-      _answered = letter;
-      _phase = ok ? _Phase.correct : _Phase.wrong;
-    });
+    setState(() => _phase = ok ? _Phase.correct : _Phase.wrong);
     final done = _arcade ? _lives <= 0 : _results.length >= widget.config.length;
-    _next = Timer(Duration(milliseconds: ok ? 900 : 1700), done ? _finish : _ask);
+    // Beim Griffbrett braucht das Anschauen der richtigen Stellen etwas länger.
+    final wait = ok ? 900 : (_q.type == QuestionType.nameFromStaff ? 1700 : 2300);
+    _next = Timer(Duration(milliseconds: wait), done ? _finish : _ask);
   }
 
   Future<void> _finish() async {
@@ -167,8 +229,9 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
     _profile
       ..coins += bonus
       ..roundsPlayed += 1;
-    final newRecord = _arcade && _coins > _profile.arcadeBest;
-    if (newRecord) _profile.arcadeBest = _coins;
+    final key = widget.config.recordKey;
+    final newRecord = _arcade && _coins > (_profile.arcadeBests[key] ?? 0);
+    if (newRecord) _profile.arcadeBests[key] = _coins;
     // Ein Übungstag zählt nach einer ganzen Runde (Arcade: ab 10 Tönen).
     StreakEvent? streak;
     if (!_arcade || _results.length >= 10) streak = _profile.streak.registerPractice(DateTime.now());
@@ -195,6 +258,19 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
   KeyEventResult _onKey(FocusNode node, KeyEvent e) {
     if (e is! KeyDownEvent) return KeyEventResult.ignored;
     final ch = e.character?.toLowerCase();
+    if (ch == '#' && _hasAccidentals) {
+      setState(() => _modifier = _modifier == Accidental.sharp ? Accidental.natural : Accidental.sharp);
+      return KeyEventResult.handled;
+    }
+    if (ch == '-' && _hasAccidentals) {
+      setState(() => _modifier = _modifier == Accidental.flat ? Accidental.natural : Accidental.flat);
+      return KeyEventResult.handled;
+    }
+    if (_q.type == QuestionType.staffFromFret && e.logicalKey == LogicalKeyboardKey.enter) {
+      _confirmStaff();
+      return KeyEventResult.handled;
+    }
+    if (!_q.type.answersWithName) return KeyEventResult.ignored;
     final map = {
       'c': Letter.c,
       'd': Letter.d,
@@ -205,27 +281,16 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
       'h': Letter.b,
       if (_naming == NoteNaming.international) 'b': Letter.b,
     };
-    if (ch == '#' && _hasAccidentals) {
-      setState(() => _modifier = _modifier == Accidental.sharp ? Accidental.natural : Accidental.sharp);
-      return KeyEventResult.handled;
-    }
-    if (ch == '-' && _hasAccidentals) {
-      setState(() => _modifier = _modifier == Accidental.flat ? Accidental.natural : Accidental.flat);
-      return KeyEventResult.handled;
-    }
     final l = map[ch];
     if (l == null) return KeyEventResult.ignored;
-    _answer(l);
+    _answerName(l);
     return KeyEventResult.handled;
   }
 
+  // ---------- Aufbau ----------
+
   @override
   Widget build(BuildContext context) {
-    final noteColor = switch (_phase) {
-      _Phase.asking => SuonaColors.ink,
-      _Phase.correct => SuonaColors.okDeep,
-      _Phase.wrong => SuonaColors.wrong,
-    };
     return Focus(
       focusNode: _focusNode,
       autofocus: true,
@@ -241,62 +306,261 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
                   _header(),
                   if (widget.config.timeLimit != null) ...[const SizedBox(height: 10), _timeBar()],
                   const SizedBox(height: 14),
-                  Expanded(
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 980),
-                        child: AspectRatio(
-                          aspectRatio: 1.75,
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              Container(
-                                decoration: BoxDecoration(
-                                  color: SuonaColors.paper,
-                                  borderRadius: BorderRadius.circular(26),
-                                  boxShadow: const [
-                                    BoxShadow(color: Color(0x55000000), blurRadius: 24, offset: Offset(0, 8)),
-                                  ],
-                                ),
-                                padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-                                child: Stack(
-                                  fit: StackFit.expand,
-                                  children: [
-                                    // Linien und Schlüssel bleiben stehen, nur die Note wechselt.
-                                    const StaffView(notes: [], drawNotes: false),
-                                    AnimatedSwitcher(
-                                      duration: const Duration(milliseconds: 220),
-                                      transitionBuilder: (child, a) => FadeTransition(
-                                        opacity: a,
-                                        child: SlideTransition(
-                                          position: Tween(begin: const Offset(0.06, 0), end: Offset.zero).animate(a),
-                                          child: child,
-                                        ),
-                                      ),
-                                      child: StaffView(
-                                        key: ValueKey(_asked),
-                                        drawStaff: false,
-                                        notes: [StaffNote(_note, color: noteColor)],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              if (_phase != _Phase.asking) Positioned(top: -18, right: 18, child: _feedback()),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  _answerPad(),
+                  Expanded(child: LayoutBuilder(builder: (context, c) => _body(c))),
                 ],
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  /// Aufbau je nach Frageart.
+  Widget _body(BoxConstraints c) {
+    final fretHeight = (c.maxHeight * 0.38).clamp(190.0, 320.0);
+    switch (_q.type) {
+      case QuestionType.nameFromStaff:
+        return Column(
+          children: [
+            Expanded(child: _withFeedback(_staffCard(maxWidth: 980, aspect: 1.75))),
+            const SizedBox(height: 18),
+            _letterPad(),
+          ],
+        );
+      case QuestionType.fretFromStaff:
+        return Column(
+          children: [
+            Expanded(child: _withFeedback(_staffCard(maxWidth: 820, aspect: 2.1))),
+            const SizedBox(height: 14),
+            if (_q.onString != null) _stringHint(),
+            SizedBox(height: fretHeight, child: _fretboardCard(answer: true)),
+          ],
+        );
+      case QuestionType.nameFromFret:
+        return Column(
+          children: [
+            Expanded(
+              child: Center(
+                child: _withFeedback(SizedBox(height: fretHeight, child: _fretboardCard())),
+              ),
+            ),
+            const SizedBox(height: 18),
+            _letterPad(),
+          ],
+        );
+      case QuestionType.staffFromFret:
+        return Column(
+          children: [
+            SizedBox(height: fretHeight * 0.9, child: _fretboardCard()),
+            const SizedBox(height: 12),
+            Expanded(child: _withFeedback(_staffInputCard())),
+            const SizedBox(height: 10),
+            _staffInputControls(),
+          ],
+        );
+    }
+  }
+
+  /// Rückmeldung oben rechts über dem Inhalt.
+  Widget _withFeedback(Widget child) {
+    return Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.center,
+      children: [
+        child,
+        if (_phase != _Phase.asking) Positioned(top: -18, right: 18, child: _feedback()),
+      ],
+    );
+  }
+
+  Color get _noteColor => switch (_phase) {
+    _Phase.asking => SuonaColors.ink,
+    _Phase.correct => SuonaColors.okDeep,
+    _Phase.wrong => SuonaColors.wrong,
+  };
+
+  Widget _paper({required Widget child}) => Container(
+    decoration: BoxDecoration(
+      color: SuonaColors.paper,
+      borderRadius: BorderRadius.circular(26),
+      boxShadow: const [BoxShadow(color: Color(0x55000000), blurRadius: 24, offset: Offset(0, 8))],
+    ),
+    padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+    child: child,
+  );
+
+  Widget _staffCard({required double maxWidth, required double aspect}) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxWidth),
+        child: AspectRatio(
+          aspectRatio: aspect,
+          child: _paper(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // Linien und Schlüssel bleiben stehen, nur die Note wechselt.
+                const StaffView(notes: [], drawNotes: false),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  transitionBuilder: (child, a) => FadeTransition(
+                    opacity: a,
+                    child: SlideTransition(
+                      position: Tween(begin: const Offset(0.06, 0), end: Offset.zero).animate(a),
+                      child: child,
+                    ),
+                  ),
+                  child: StaffView(
+                    key: ValueKey(_asked),
+                    drawStaff: false,
+                    notes: [StaffNote(_note, color: _noteColor)],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Griffbrett als Frage (leuchtender Punkt) oder als Antwort (antippen).
+  Widget _fretboardCard({bool answer = false}) {
+    final range = widget.config.range;
+    final marks = <FretMark>[];
+    if (answer) {
+      if (_phase != _Phase.asking) {
+        final name = pitchName(_note, _naming);
+        for (final p in _q.accepted) {
+          if (p == _tapped) continue;
+          marks.add(FretMark(p, color: SuonaColors.ok, filled: _phase == _Phase.wrong, label: name));
+        }
+        if (_tapped != null) {
+          // Ein falsch angetippter Punkt zeigt, welcher Ton dort wirklich liegt.
+          final tappedName = _phase == _Phase.correct ? name : pitchName(_spell(Guitar.midiAt(_tapped!)), _naming);
+          marks.add(
+            FretMark(_tapped!, color: _phase == _Phase.correct ? SuonaColors.ok : SuonaColors.wrong, label: tappedName),
+          );
+        }
+      }
+    } else if (_q.shown != null) {
+      final color = switch (_phase) {
+        _Phase.asking => SuonaColors.spot,
+        _Phase.correct => SuonaColors.ok,
+        _Phase.wrong => SuonaColors.wrong,
+      };
+      marks.add(FretMark(_q.shown!, color: color, label: _phase == _Phase.asking ? '?' : pitchName(_note, _naming)));
+    }
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1160),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(10, 12, 14, 6),
+          decoration: BoxDecoration(color: SuonaColors.stageFloor, borderRadius: BorderRadius.circular(22)),
+          child: Fretboard(
+            key: ValueKey('fb$_asked'),
+            marks: marks,
+            naming: _naming,
+            lowStringOnTop: _state.settings.lowStringOnTop,
+            activeStrings: _q.onString != null ? {_q.onString!} : range?.strings,
+            minFret: range?.minFret ?? 0,
+            maxFret: range?.maxFret ?? Guitar.maxFret,
+            highlightString: _q.onString,
+            onTap: answer && _phase == _Phase.asking ? _answerFret : null,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Ton zu einer MIDI-Zahl, geschrieben wie in den Einstellungen (♯ oder ♭).
+  Pitch _spell(int midi) {
+    final flats = _state.settings.accidentals == AccidentalStyle.flats;
+    return Pitch.range(midi, midi, sharps: !flats, flats: flats).first;
+  }
+
+  Widget _stringHint() {
+    final names = _naming == NoteNaming.german ? Guitar.stringNamesGerman : Guitar.stringNamesInternational;
+    final s = names[_q.onString! - 1];
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(tr('Auf der $s-Saite!', 'On the $s string!'), style: display(24, color: SuonaColors.spot)),
+    );
+  }
+
+  Widget _staffInputCard() {
+    final notes = <StaffNote>[];
+    if (_placedStep != null) {
+      final placed = pitchFromStaffStep(_placedStep!, _modifier);
+      final color = switch (_phase) {
+        _Phase.asking => SuonaColors.violet,
+        _Phase.correct => SuonaColors.okDeep,
+        _Phase.wrong => SuonaColors.wrong,
+      };
+      notes.add(StaffNote(placed, color: color));
+    }
+    if (_phase == _Phase.wrong) notes.add(StaffNote(_note, color: SuonaColors.okDeep));
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 820),
+        child: AspectRatio(
+          aspectRatio: 2.1,
+          child: _paper(
+            child: StaffTapArea(
+              onStep: _phase == _Phase.asking ? _placeNote : null,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  StaffView(notes: notes),
+                  if (_placedStep == null && _phase == _Phase.asking)
+                    Align(
+                      alignment: Alignment.bottomRight,
+                      child: Text(
+                        tr('Tippe, wo die Note hingehört', 'Tap where the note belongs'),
+                        style: display(22, color: SuonaColors.inkMuted, weight: FontWeight.w700),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _staffInputControls() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        if (_hasAccidentals)
+          for (final a in const [Accidental.sharp, Accidental.flat])
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: _ModifierButton(
+                accidental: a,
+                selected: _modifier == a,
+                height: 62,
+                onTap: _phase == _Phase.asking
+                    ? () => setState(() => _modifier = _modifier == a ? Accidental.natural : a)
+                    : null,
+              ),
+            ),
+        const SizedBox(width: 18),
+        FilledButton.icon(
+          onPressed: _phase == _Phase.asking && _placedStep != null ? _confirmStaff : null,
+          icon: const Icon(Icons.check_rounded, size: 30),
+          label: Text(tr('Fertig', 'Done')),
+          style: FilledButton.styleFrom(
+            backgroundColor: SuonaColors.spot,
+            foregroundColor: SuonaColors.ink,
+            disabledBackgroundColor: SuonaColors.stageFloor,
+            textStyle: display(26),
+            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
+          ),
+        ),
+      ],
     );
   }
 
@@ -382,9 +646,19 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
 
   Widget _feedback() {
     final ok = _phase == _Phase.correct;
-    final name = pitchName(_note, _naming);
-    final withOctave = pitchNameWithOctave(_note, _naming);
-    final timeout = !ok && _answered == null;
+    // Mit der anderen Schreibweise richtig (Ges statt Fis): diese zeigen.
+    final shownPitch = ok && _answeredLetter != null && _answeredLetter != _note.letter
+        ? (_note.enharmonic ?? _note)
+        : _note;
+    final name = pitchName(shownPitch, _naming);
+    final withOctave = pitchNameWithOctave(shownPitch, _naming);
+    final timeout = !ok && _answeredLetter == null && _tapped == null && _placedStep == null;
+    final text = switch (_q.type) {
+      _ when ok => '$name!',
+      QuestionType.fretFromStaff => tr('Hier liegt das $name', 'Here is $name'),
+      QuestionType.staffFromFret => tr('So steht das $name', 'This is how $name looks'),
+      _ => tr('Das ist $name', 'That’s $name'),
+    };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
       decoration: BoxDecoration(
@@ -401,7 +675,7 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
             size: 30,
           ),
           const SizedBox(width: 8),
-          Text(ok ? '$name!' : tr('Das ist $name', 'That’s $name'), style: display(30, color: Colors.white)),
+          Text(text, style: display(30, color: Colors.white)),
           if (withOctave != name) ...[
             const SizedBox(width: 8),
             Text(
@@ -420,26 +694,26 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _answerPad() {
+  Widget _letterPad() {
+    final enharmonic = _q.type == QuestionType.nameFromFret;
     return LayoutBuilder(
       builder: (context, c) {
         final size = min(96.0, (c.maxWidth - 6 * 10) / 7);
-        final letters = Letter.values;
         return Column(
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                for (final l in letters)
+                for (final l in Letter.values)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 5),
                     child: _AnswerButton(
                       label: letterLabel(l, _naming),
                       size: size,
-                      state: _answered == l
+                      state: _answeredLetter == l
                           ? (_phase == _Phase.correct ? _ButtonState.right : _ButtonState.wrong)
                           : (_phase == _Phase.wrong && l == _note.letter ? _ButtonState.hint : _ButtonState.normal),
-                      onTap: _phase == _Phase.asking ? () => _answer(l) : null,
+                      onTap: _phase == _Phase.asking ? () => _answerName(l) : null,
                     ),
                   ),
               ],
@@ -466,7 +740,12 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
               ),
               const SizedBox(height: 4),
               Text(
-                tr('Vorzeichen zuerst wählen, dann den Ton', 'Pick ♯ or ♭ first, then the note'),
+                enharmonic
+                    ? tr(
+                        'Vorzeichen zuerst wählen, dann den Ton. Fis und Ges zählen beide.',
+                        'Pick ♯ or ♭ first, then the note. F♯ and G♭ both count.',
+                      )
+                    : tr('Vorzeichen zuerst wählen, dann den Ton', 'Pick ♯ or ♭ first, then the note'),
                 style: const TextStyle(color: SuonaColors.onStageMuted, fontSize: 14),
               ),
             ],
