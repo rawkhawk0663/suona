@@ -41,7 +41,8 @@ dependencies:
   window_manager: ^0.5.1
   flutter_localizations:
     sdk: flutter
-  permission_handler: ^13.0.2
+  # 12.x: die neueren Fassungen verlangen Android-SDK 37, das Flutter 3.47 noch nicht nutzt.
+  permission_handler: 12.0.1
   url_launcher: ^6.3.3
 
 dev_dependencies:
