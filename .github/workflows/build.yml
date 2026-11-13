@@ -1,0 +1,164 @@
+# Baut Suona automatisch bei jeder Änderung auf "main" und stellt die
+# fertigen Dateien unter "Releases" zum Herunterladen bereit.
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  FLUTTER_VERSION: "3.47.9"
+  # Vorderer Teil der Versionsnummer. Die letzte Zahl ist die laufende Nummer
+  # des Builds (zählt immer weiter, darauf verlässt sich die Update-Suche).
+  VERSION_PREFIX: "0.1"
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Prüfen & Testen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      # Die Mikrofon-Bibliothek wird auch für die Tests gebaut und braucht ALSA.
+      - run: sudo apt-get update && sudo apt-get install -y libasound2-dev
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+  windows:
+    name: Windows-Build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter build windows --release --build-name=${{ env.VERSION_PREFIX }}.${{ github.run_number }} --build-number=${{ github.run_number }} --dart-define=SUONA_VERSION=v${{ env.VERSION_PREFIX }}.${{ github.run_number }}
+      - name: ZIP erstellen
+        shell: pwsh
+        run: |
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath Suona-Windows.zip
+      # Installationsprogramm (Inno Setup): Startmenü, Deinstallieren in den
+      # Windows-Einstellungen. Die ZIP-Datei bleibt für die Updates in der App.
+      - name: Installationsprogramm erstellen
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress | Out-Null }
+          # Deutsche Texte in Schweizer Schreibweise (ss statt ß).
+          $isl = "${env:ProgramFiles(x86)}\Inno Setup 6\Languages\German.isl"
+          $bytes = [IO.File]::ReadAllBytes($isl)
+          $out = "windows\installer\German-CH.isl"
+          if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) {
+            $text = [IO.File]::ReadAllText($isl, [Text.UTF8Encoding]::new($true))
+            [IO.File]::WriteAllText($out, $text.Replace([string][char]0xDF, 'ss'), [Text.UTF8Encoding]::new($true))
+          } else {
+            Copy-Item $isl $out
+          }
+          & $iscc "/DAppVersion=${{ env.VERSION_PREFIX }}.${{ github.run_number }}" windows\installer\suona.iss
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          Copy-Item build\installer\Suona-Setup.exe Suona-Setup.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Suona-Windows
+          path: |
+            Suona-Windows.zip
+            Suona-Setup.exe
+
+  android:
+    name: Android-Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      # Bricht beim Herunterladen von Android-Teilen die Verbindung ab, einmal
+      # nochmals versuchen (bereits Geladenes bleibt erhalten).
+      - name: Android-App bauen
+        run: |
+          ARGS="--release --build-name=${{ env.VERSION_PREFIX }}.${{ github.run_number }} --build-number=${{ github.run_number }} --dart-define=SUONA_VERSION=v${{ env.VERSION_PREFIX }}.${{ github.run_number }}"
+          flutter build apk $ARGS || (echo "Zweiter Versuch …" && sleep 30 && flutter build apk $ARGS)
+      - run: cp build/app/outputs/flutter-apk/app-release.apk Suona-Android.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Suona-Android
+          path: Suona-Android.apk
+
+  release:
+    name: Zum Download bereitstellen
+    # Nur für "main"; Android ist optional – ein Android-Fehler blockiert
+    # den Windows-Download nicht.
+    if: always() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.test.result == 'success' && needs.windows.result == 'success'
+    needs: [test, windows, android]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Release erstellen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          TAG="v${{ env.VERSION_PREFIX }}.${{ github.run_number }}"
+          MSG=$(printf '%s' "$COMMIT_MSG" | head -1)
+          gh release create "$TAG" dist/* \
+            --repo "${{ github.repository }}" \
+            --target "${{ github.sha }}" \
+            --title "Suona $TAG" \
+            --notes "Automatischer Build. Änderung: ${MSG:-manuell gestartet}" \
+            --prerelease=false --latest
+      # Zusätzlich im öffentlichen Download-Projekt ablegen (ohne Programmcode).
+      # Von dort sucht Suona nach Updates. Fehlt der Schlüssel, wird es übersprungen.
+      - name: Downloads im öffentlichen Projekt ablegen
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "Kein RELEASES_TOKEN hinterlegt – übersprungen."
+            exit 0
+          fi
+          TAG="v${{ env.VERSION_PREFIX }}.${{ github.run_number }}"
+          MSG=$(printf '%s' "$COMMIT_MSG" | head -1)
+          cat > notes.md <<EOT
+          **Neu / New:** ${MSG:-Verbesserungen}
+
+          ### Installieren (Windows 10/11)
+          **\`Suona-Setup.exe\`** herunterladen und starten. Meldet Windows „Der Computer wurde durch Windows geschützt“: *Weitere Informationen → Trotzdem ausführen*. Ohne Installation: \`Suona-Windows.zip\` entpacken und \`Suona.exe\` starten.
+          Ist Suona schon installiert, kommt das Update direkt in der App: Schloss-Symbol → Lehrerbereich → *Über Suona* → *Nach Updates suchen*.
+
+          ### Install (Windows 10/11)
+          Download and run **\`Suona-Setup.exe\`**. If Windows says "Windows protected your PC": *More info → Run anyway*. Without installing: unzip \`Suona-Windows.zip\` and run \`Suona.exe\`.
+          If Suona is already installed, update right in the app: lock icon → Teacher area → *About Suona* → *Check for updates*.
+
+          \`Suona-Android.apk\`: Android-Testversion / Android test version.
+          EOT
+          sed -i 's/^          //' notes.md
+          gh release create "$TAG" dist/* \
+            --repo "rawkhawk0663/suona-releases" \
+            --title "Suona $TAG" \
+            --notes-file notes.md \
+            --latest
