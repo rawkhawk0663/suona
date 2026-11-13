@@ -22,6 +22,7 @@ Der Bauplan (fünf Pakete) liegt als Artifact „Suona Bauplan“ beim Besitzer.
 - Oberfläche Deutsch (Grundsprache, Schweizer Schreibweise: „ss“ statt „ß“) und Englisch (britisch). **Jeder sichtbare Text** als `tr('Deutsch', 'English')` (`lib/app/l10n.dart`, wie bei Volti). Kein `const` um Widgets mit `tr(...)`.
 - Code-Kommentare deutsch, Bezeichner englisch. Ordner- und Dateinamen auf der Festplatte und JSON-Schlüssel nie übersetzen.
 - Kindgerecht schreiben: kurze Sätze, grosse Knöpfe. Die Jüngsten lernen gerade lesen.
+- **Beschreibung im öffentlichen Download-Projekt** (`rawkhawk0663/suona-releases`): `README.md` (Deutsch) und `README.en.md` (Englisch), Bilder in `bilder/` (`suona_icon.png`, `luna_und_fuzz.png`). **Bei jeder sichtbaren Änderung der App ungefragt nachführen** (ausdrücklicher Wunsch des Besitzers): neue Funktionen, geänderte Wege in der Bedienung, „Kommt bald“ abhaken, neues Symbol oder neue Figuren auch als Bild. Das Projekt mit `add_repo` (push) holen, ändern, direkt auf `main` schieben.
 
 ## Musik
 - `Pitch` speichert den **klingenden** Ton (C4 = c'). Gitarrennoten stehen eine Oktave höher (Violinschlüssel mit kleiner 8), das rechnet `staffStep` ein: 0 = unterste Linie, E2 = −7 (unter der 3. Hilfslinie), E5 = 14 (auf der 3. Hilfslinie oben).
