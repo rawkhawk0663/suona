@@ -71,10 +71,18 @@ lib/
     suona_state.dart  Zustand der App (SuonaScope)
   features/    start (Wer spielt?), home, quiz (Üben + Arcade, Ergebnis), arcade (Einstellungen), teacher (Lehrerbereich)
   widgets/     Bühne, Figuren, Münzen, Notensystem, Griffbrett
-assets/characters/  Luna und Fuzz als SVG (ganz und nur Gesicht). Fuzz: kurze Seiten, oben stachlig.
-                    Anschlagarm liegt vor der Gitarre, Greifarm hinter dem Hals (Wunsch des Besitzers).
+assets/characters/  Luna und Fuzz als SVG (ganz und nur Gesicht), erzeugt mit tool/make_characters.py.
+tool/make_characters.py  zeichnet die Figuren (siehe „Figuren“)
 tool/make_icon.py   erzeugt das App-Symbol (Windows .ico, Android)
 ```
+
+## Figuren
+- Stil „Mix 2“ (vom Besitzer gewählt, aus einem Vergleich von vier Stilen): grosse, glänzende Chibi-Augen und Bäckchen, dazu dicke dunkle Konturen (`#15121F`), harte Schatten als Sichel und Rock-Details. Luna: lange violette Haare, Stern im Haar und auf dem Shirt, korallroter Rock, Ringelstrumpfhose, Stiefel, türkise spitze Gitarre. Fuzz: oben stachlige Haare mit kurzen Seiten, türkises Shirt mit Blitz, Jeans mit Riss, Turnschuhe, schwarzes Schweissband, rote Gitarre.
+- Nicht von Hand in den SVGs ändern, sondern in `tool/make_characters.py` und neu erzeugen (`python3 tool/make_characters.py`). Kopf und Körper sind getrennte Gruppen (`HEAD_SCALE` 1.16, `BODY_SCALE` 0.95), die Konturen bleiben trotzdem gleich dick.
+- Der Anschlagarm liegt vor der Gitarre, der Greifarm hinter dem Hals (Wunsch des Besitzers).
+- Keine Strichelung (`stroke-dasharray`) verwenden, `flutter_svg` kennt sie nicht. Schatten über `clipPath` funktionieren.
+- Für den Shop (Paket 3): Mix 2 wurde gewählt, weil der Körper Platz für Kleidung hat und beide Figuren fast gleich gebaut sind, so passen viele Teile beiden. Shop-Teile werden als Ebenen ergänzt (Körper, Schuhe, Hose/Rock, Oberteil, Jacke, Kopf, Frisur, Kopfbedeckung, Brille, Gitarre).
+- Das Bild `bilder/luna_und_fuzz.png` im Download-Projekt bei Änderungen an den Figuren neu erzeugen.
 
 ## Technik
 - Flutter `3.47.9` (in `.github/workflows/build.yml`), Material 3. Hauptgerät: Microsoft Surface (Windows), danach Android, später evtl. iPad.
