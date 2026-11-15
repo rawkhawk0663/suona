@@ -7,9 +7,11 @@ import 'package:flutter/services.dart';
 import '../../app/l10n.dart';
 import '../../app/theme.dart';
 import '../../core/audio/sounds.dart';
+import '../../core/game/adventure.dart';
 import '../../core/game/note_stats.dart';
 import '../../core/game/question.dart';
 import '../../core/game/rewards.dart';
+import '../../core/game/shop.dart';
 import '../../core/music/guitar.dart';
 import '../../core/music/note_names.dart';
 import '../../core/music/pitch.dart';
@@ -35,6 +37,8 @@ class QuizConfig {
     this.range,
     this.fixedString = false,
     this.recordKey = 'name',
+    this.adventure,
+    this.pedals = const [],
   });
 
   /// Übungsrunde „Noten lesen“: 10 Töne aus dem Lehrplan, ohne Zeitdruck.
@@ -70,6 +74,21 @@ class QuizConfig {
 
   /// Unter welchem Namen der Arcade-Rekord gespeichert wird.
   final String recordKey;
+
+  /// Gesetzt, wenn es ein Level im Abenteuer ist (mit Publikum und Pedalen).
+  final AdventureRef? adventure;
+
+  /// Gekaufte Pedale, im Abenteuer je einmal pro Level einsetzbar.
+  final List<String> pedals;
+}
+
+/// Welches Level im Abenteuer gespielt wird.
+class AdventureRef {
+  const AdventureRef({required this.curriculumId, required this.station, required this.level, required this.crowdLoss});
+  final String curriculumId;
+  final int station;
+  final int level;
+  final double crowdLoss;
 }
 
 /// Eine Runde: Noten lesen, Griffbrett finden, Töne benennen oder setzen.
@@ -117,6 +136,16 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
   Timer? _next;
 
   bool get _arcade => widget.config.mode == QuizMode.arcade;
+  AdventureRef? get _adv => widget.config.adventure;
+
+  // Abenteuer: Stimmung des Publikums und Pedale
+  double _crowd = Adventure.crowdStart;
+  final _usedPedals = <String>{};
+  bool _shieldArmed = false;
+  bool _shielded = false;
+  bool _capoActive = false;
+  final _hiddenLetters = <Letter>{};
+  int? _tunerString;
   NoteNaming get _naming => _state.naming;
   Pitch get _note => _q.pitch;
 
@@ -162,6 +191,10 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
       _asked++;
       _phase = _Phase.asking;
       _answeredLetter = null;
+      _shielded = false;
+      _capoActive = false;
+      _hiddenLetters.clear();
+      _tunerString = null;
       _tapped = null;
       _placedStep = null;
       _modifier = Accidental.natural;
@@ -198,7 +231,20 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
     if (_phase != _Phase.asking || _finished) return;
     _timer.stop();
     _profile.stats.record(_note, correct: ok, prefix: _q.type.statsPrefix);
+    // Schild-Pedal: Der Fehler zählt nicht, das Publikum merkt nichts.
+    if (!ok && _shieldArmed) {
+      _shieldArmed = false;
+      unawaited(Sounds.instance.wrong());
+      _next = Timer(const Duration(milliseconds: 450), () => Sounds.instance.pluck(_note.midi));
+      setState(() {
+        _phase = _Phase.wrong;
+        _shielded = true;
+      });
+      _next = Timer(const Duration(milliseconds: 2000), _ask);
+      return;
+    }
     _results.add(ok);
+    if (_adv != null) _crowd = (ok ? _crowd + Adventure.crowdGain : _crowd - _adv!.crowdLoss).clamp(0.0, 1.0);
     if (ok) {
       _lastGain = _combo.hit();
       _coins += _lastGain;
@@ -214,15 +260,77 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
       _next = Timer(const Duration(milliseconds: 450), () => Sounds.instance.pluck(_note.midi));
     }
     setState(() => _phase = ok ? _Phase.correct : _Phase.wrong);
-    final done = _arcade ? _lives <= 0 : _results.length >= widget.config.length;
+    final done = _arcade ? _lives <= 0 : (_results.length >= widget.config.length || (_adv != null && _crowd <= 0));
     // Beim Griffbrett braucht das Anschauen der richtigen Stellen etwas länger.
     final wait = ok ? 900 : (_q.type == QuestionType.nameFromStaff ? 1700 : 2300);
     _next = Timer(Duration(milliseconds: wait), done ? _finish : _ask);
   }
 
+  void _usePedal(String id) {
+    if (_phase != _Phase.asking || _usedPedals.contains(id)) return;
+    setState(() {
+      _usedPedals.add(id);
+      switch (id) {
+        case 'pedal_shield':
+          _shieldArmed = true;
+        case 'pedal_capo':
+          _capoActive = true;
+          _timer.stop();
+        case 'pedal_tuner':
+          if (_q.type.answersWithName) {
+            final wrong = Letter.values.where((l) => l != _note.letter).toList()..shuffle();
+            _hiddenLetters.addAll(wrong.take(2));
+          } else if (_q.accepted.isNotEmpty) {
+            _tunerString = _q.accepted.first.string;
+          }
+      }
+    });
+  }
+
+  /// Kann ein Pedal gerade helfen?
+  bool _pedalUseful(String id) => switch (id) {
+    'pedal_capo' => widget.config.timeLimit != null,
+    'pedal_tuner' => _q.type != QuestionType.staffFromFret,
+    _ => true,
+  };
+
+  Future<void> _finishAdventure(AdventureRef adv) async {
+    final correct = _results.where((r) => r).length;
+    final crowdGone = _crowd <= 0;
+    final stars = crowdGone ? 0 : Adventure.starsForRound(correct, widget.config.length);
+    final passed = stars > 0;
+    final first = Adventure.record(_profile, adv.curriculumId, adv.station, adv.level, stars);
+    final bonus = first ? Adventure.firstClearBonus(adv.level) : 0;
+    _profile
+      ..coins += bonus
+      ..roundsPlayed += 1;
+    StreakEvent? streak;
+    if (_results.length >= 8) streak = _profile.streak.registerPractice(DateTime.now());
+    await _state.saveProfile(_profile);
+    if (passed) unawaited(Sounds.instance.fanfare());
+    if (!mounted) return;
+    await Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => ResultScreen(
+          profileId: _profile.id,
+          config: widget.config,
+          correct: correct,
+          total: _results.length,
+          coins: _coins + bonus,
+          bonus: bonus,
+          stars: stars,
+          newRecord: false,
+          streakEvent: streak,
+          adventure: AdventureOutcome(passed: passed, crowdGone: crowdGone, firstClear: first),
+        ),
+      ),
+    );
+  }
+
   Future<void> _finish() async {
     if (_finished) return;
     _finished = true;
+    if (_adv != null) return _finishAdventure(_adv!);
     final correct = _results.where((r) => r).length;
     final stars = _arcade ? 0 : starsFor(correct, _results.length);
     final bonus = bonusForStars(stars);
@@ -305,6 +413,7 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
                 children: [
                   _header(),
                   if (widget.config.timeLimit != null) ...[const SizedBox(height: 10), _timeBar()],
+                  if (_adv != null) ...[const SizedBox(height: 10), _crowdAndPedals()],
                   const SizedBox(height: 14),
                   Expanded(child: LayoutBuilder(builder: (context, c) => _body(c))),
                 ],
@@ -466,7 +575,7 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
             activeStrings: _q.onString != null ? {_q.onString!} : range?.strings,
             minFret: range?.minFret ?? 0,
             maxFret: range?.maxFret ?? Guitar.maxFret,
-            highlightString: _q.onString,
+            highlightString: _q.onString ?? (answer ? _tunerString : null),
             onTap: answer && _phase == _Phase.asking ? _answerFret : null,
           ),
         ),
@@ -564,6 +673,53 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
     );
   }
 
+  Widget _crowdAndPedals() {
+    final mood = _crowd;
+    final color = mood > 0.55 ? SuonaColors.ok : (mood > 0.25 ? SuonaColors.spot : SuonaColors.coral);
+    return Row(
+      children: [
+        Icon(
+          mood > 0.55
+              ? Icons.sentiment_very_satisfied_rounded
+              : (mood > 0.25 ? Icons.sentiment_neutral_rounded : Icons.sentiment_very_dissatisfied_rounded),
+          color: color,
+          size: 30,
+        ),
+        const SizedBox(width: 8),
+        Text(
+          tr('Publikum', 'Crowd'),
+          style: display(18, color: SuonaColors.onStage, weight: FontWeight.w700),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(end: mood),
+              duration: const Duration(milliseconds: 350),
+              builder: (context, v, _) => LinearProgressIndicator(
+                value: v,
+                minHeight: 14,
+                backgroundColor: SuonaColors.stageFloor,
+                color: color,
+              ),
+            ),
+          ),
+        ),
+        for (final id in widget.config.pedals) ...[
+          const SizedBox(width: 10),
+          _PedalButton(
+            id: id,
+            used: _usedPedals.contains(id),
+            active: (id == 'pedal_shield' && _shieldArmed) || (id == 'pedal_capo' && _capoActive),
+            enabled: _phase == _Phase.asking && !_usedPedals.contains(id) && _pedalUseful(id),
+            onTap: () => _usePedal(id),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _header() {
     return Row(
       children: [
@@ -653,6 +809,20 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
     final name = pitchName(shownPitch, _naming);
     final withOctave = pitchNameWithOctave(shownPitch, _naming);
     final timeout = !ok && _answeredLetter == null && _tapped == null && _placedStep == null;
+    if (_shielded) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+        decoration: BoxDecoration(color: SuonaColors.violet, borderRadius: BorderRadius.circular(18)),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.shield_rounded, color: Colors.white, size: 30),
+            const SizedBox(width: 8),
+            Text(tr('Schild! Das war $name', 'Shield! That was $name'), style: display(28, color: Colors.white)),
+          ],
+        ),
+      );
+    }
     final text = switch (_q.type) {
       _ when ok => '$name!',
       QuestionType.fretFromStaff => tr('Hier liegt das $name', 'Here is $name'),
@@ -713,7 +883,8 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
                       state: _answeredLetter == l
                           ? (_phase == _Phase.correct ? _ButtonState.right : _ButtonState.wrong)
                           : (_phase == _Phase.wrong && l == _note.letter ? _ButtonState.hint : _ButtonState.normal),
-                      onTap: _phase == _Phase.asking ? () => _answerName(l) : null,
+                      hidden: _hiddenLetters.contains(l),
+                      onTap: _phase == _Phase.asking && !_hiddenLetters.contains(l) ? () => _answerName(l) : null,
                     ),
                   ),
               ],
@@ -759,11 +930,20 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
 enum _ButtonState { normal, right, wrong, hint }
 
 class _AnswerButton extends StatelessWidget {
-  const _AnswerButton({required this.label, required this.size, required this.state, required this.onTap});
+  const _AnswerButton({
+    required this.label,
+    required this.size,
+    required this.state,
+    required this.onTap,
+    this.hidden = false,
+  });
   final String label;
   final double size;
   final _ButtonState state;
   final VoidCallback? onTap;
+
+  /// Vom Stimmgerät weggestrichen.
+  final bool hidden;
 
   @override
   Widget build(BuildContext context) {
@@ -776,16 +956,19 @@ class _AnswerButton extends StatelessWidget {
     return SizedBox(
       width: size,
       height: size,
-      child: Material(
-        color: bg,
-        borderRadius: BorderRadius.circular(size * 0.24),
-        elevation: 3,
-        shadowColor: Colors.black54,
-        child: InkWell(
+      child: Opacity(
+        opacity: hidden ? 0.18 : 1,
+        child: Material(
+          color: bg,
           borderRadius: BorderRadius.circular(size * 0.24),
-          onTap: onTap,
-          child: Center(
-            child: Text(label, style: display(size * 0.5, color: fg)),
+          elevation: 3,
+          shadowColor: Colors.black54,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(size * 0.24),
+            onTap: onTap,
+            child: Center(
+              child: Text(label, style: display(size * 0.5, color: fg)),
+            ),
           ),
         ),
       ),
@@ -864,4 +1047,59 @@ class _PickPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_PickPainter old) => old.filled != filled;
+}
+
+/// Ein Pedal im Abenteuer: einmal pro Level antippen.
+class _PedalButton extends StatelessWidget {
+  const _PedalButton({
+    required this.id,
+    required this.used,
+    required this.active,
+    required this.enabled,
+    required this.onTap,
+  });
+  final String id;
+  final bool used;
+  final bool active;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final item = Shop.byId(id);
+    final icon = switch (id) {
+      'pedal_shield' => Icons.shield_rounded,
+      'pedal_capo' => Icons.pause_circle_rounded,
+      _ => Icons.tune_rounded,
+    };
+    return Tooltip(
+      message: item == null ? id : '${item.name}: ${item.help}',
+      child: Material(
+        color: active ? SuonaColors.violet : (enabled ? SuonaColors.spot : SuonaColors.stageFloor),
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: enabled ? onTap : null,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 26, color: enabled || active ? SuonaColors.ink : SuonaColors.onStageMuted),
+                const SizedBox(width: 6),
+                Text(
+                  item?.name ?? id,
+                  style: display(
+                    16,
+                    color: enabled || active ? SuonaColors.ink : SuonaColors.onStageMuted,
+                    weight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

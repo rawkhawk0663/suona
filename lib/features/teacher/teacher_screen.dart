@@ -5,6 +5,7 @@ import '../../app/error_log.dart';
 import '../../app/l10n.dart';
 import '../../app/theme.dart';
 import '../../app/version.dart';
+import '../../core/game/adventure.dart';
 import '../../core/game/question.dart';
 import '../../core/music/curriculum.dart';
 import '../../core/music/note_names.dart';
@@ -93,7 +94,7 @@ class _ProfileCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                FaceBadge(profile.character, size: 58),
+                FaceBadge(profile.look, size: 58),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -117,6 +118,7 @@ class _ProfileCard extends StatelessWidget {
                     PopupMenuItem(value: 'rename', child: Text(tr('Umbenennen', 'Rename'))),
                     PopupMenuItem(value: 'character', child: Text(tr('Figur wechseln', 'Switch character'))),
                     PopupMenuItem(value: 'reset', child: Text(tr('Lernstand zurücksetzen', 'Reset progress'))),
+                    PopupMenuItem(value: 'adventure', child: Text(tr('Abenteuer neu beginnen', 'Restart adventure'))),
                     PopupMenuItem(value: 'delete', child: Text(tr('Profil löschen', 'Delete profile'))),
                   ],
                 ),
@@ -153,6 +155,8 @@ class _ProfileCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 14),
+            _AdventureLine(profile: profile, curriculum: curriculum),
+            const SizedBox(height: 12),
             Text(tr('Lernstand Noten lesen', 'Progress: reading notes'), style: theme.textTheme.titleMedium),
             const SizedBox(height: 6),
             _Mastery(profile: profile, curriculum: curriculum, step: step, naming: state.naming),
@@ -185,6 +189,18 @@ class _ProfileCard extends StatelessWidget {
       case 'character':
         profile.character = profile.character == Character.luna ? Character.fuzz : Character.luna;
         await state.saveProfile(profile);
+      case 'adventure':
+        if (await _confirm(
+          context,
+          tr('Abenteuer von ${profile.nickname} neu beginnen?', 'Restart ${profile.nickname}’s adventure?'),
+          tr(
+            'Alle Sterne auf der Weltkarte dieses Lehrplans gehen verloren. Münzen und gekaufte Teile bleiben.',
+            'All stars on the world map for this curriculum are lost. Coins and bought items stay.',
+          ),
+        )) {
+          profile.adventure.remove(profile.curriculumId);
+          await state.saveProfile(profile);
+        }
       case 'reset':
         if (await _confirm(
           context,
@@ -632,4 +648,48 @@ Future<String?> _askText(BuildContext context, String title, String initial) {
       ],
     ),
   ).whenComplete(ctrl.dispose);
+}
+
+/// Wie weit ein Kind im Abenteuer ist, und ob es auf den Unterricht wartet.
+class _AdventureLine extends StatelessWidget {
+  const _AdventureLine({required this.profile, required this.curriculum});
+  final Profile profile;
+  final Curriculum curriculum;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = profile, c = curriculum;
+    var done = 0;
+    for (var s = 0; s < Adventure.stationCount; s++) {
+      if (Adventure.stationDone(p, c.id, s)) done++;
+    }
+    final next = done < Adventure.stationCount ? done : null;
+    final waits = next != null && Adventure.lockOf(p, c, next) == StationLock.teacher;
+    final (from, _) = next == null ? (0, 0) : Adventure.stepsOf(next, c.steps.length);
+    return Row(
+      children: [
+        const Icon(Icons.map_rounded, color: SuonaColors.inkMuted),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            next == null
+                ? tr('Abenteuer: alle 8 Stationen geschafft!', 'Adventure: all 8 stations done!')
+                : waits
+                ? tr(
+                    'Abenteuer: $done von 8 Stationen. Wartet auf Schritt ${from + 1} („${c.steps[from].title}“), damit „${Adventure.stationName(next)}“ aufgeht.',
+                    'Adventure: $done of 8 stations. Waiting for step ${from + 1} (“${c.steps[from].title}”) to open “${Adventure.stationName(next)}”.',
+                  )
+                : tr(
+                    'Abenteuer: $done von 8 Stationen, jetzt in „${Adventure.stationName(next)}“.',
+                    'Adventure: $done of 8 stations, now at “${Adventure.stationName(next)}”.',
+                  ),
+            style: TextStyle(
+              color: waits ? SuonaColors.red : SuonaColors.inkMuted,
+              fontWeight: waits ? FontWeight.w700 : null,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }

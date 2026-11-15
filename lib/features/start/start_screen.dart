@@ -97,7 +97,7 @@ class _ProfileCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(12, 18, 12, 14),
             child: Column(
               children: [
-                FaceBadge(profile.character, size: 104),
+                FaceBadge(profile.look, size: 104),
                 const SizedBox(height: 10),
                 Text(
                   profile.nickname,

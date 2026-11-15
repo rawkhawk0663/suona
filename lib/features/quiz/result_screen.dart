@@ -2,10 +2,20 @@ import 'package:flutter/material.dart';
 
 import '../../app/l10n.dart';
 import '../../app/theme.dart';
+import '../../core/game/adventure.dart';
 import '../../core/game/rewards.dart';
 import '../../core/suona_state.dart';
 import '../../widgets/stage.dart';
+import '../adventure/adventure_launch.dart';
 import 'quiz_screen.dart';
+
+/// Ergebnis eines Abenteuer-Levels.
+class AdventureOutcome {
+  const AdventureOutcome({required this.passed, required this.crowdGone, required this.firstClear});
+  final bool passed;
+  final bool crowdGone;
+  final bool firstClear;
+}
 
 /// Ergebnis einer Runde: Sterne, Münzen, Streak.
 class ResultScreen extends StatelessWidget {
@@ -20,6 +30,7 @@ class ResultScreen extends StatelessWidget {
     required this.stars,
     required this.newRecord,
     required this.streakEvent,
+    this.adventure,
   });
 
   final String profileId;
@@ -31,10 +42,19 @@ class ResultScreen extends StatelessWidget {
   final int stars;
   final bool newRecord;
   final StreakEvent? streakEvent;
+  final AdventureOutcome? adventure;
 
   bool get _arcade => config.mode == QuizMode.arcade;
 
   String get _headline {
+    final adv = adventure;
+    if (adv != null) {
+      if (adv.crowdGone) return tr('Das Publikum ist gegangen', 'The crowd has left');
+      if (!adv.passed) return tr('Fast! Nochmal?', 'Almost! Again?');
+      final ref = config.adventure!;
+      if (ref.level == Adventure.concertLevel) return tr('Was für ein Auftritt!', 'What a concert!');
+      return tr('Level geschafft!', 'Level cleared!');
+    }
     if (_arcade) {
       if (newRecord) return tr('Neuer Rekord!', 'New record!');
       return correct == 0 ? tr('Weiter üben!', 'Keep practising!') : tr('Gut gespielt!', 'Well played!');
@@ -69,7 +89,7 @@ class ResultScreen extends StatelessWidget {
               padding: const EdgeInsets.all(24),
               child: Column(
                 children: [
-                  if (profile != null) SizedBox(height: 210, child: CharacterView(profile.character)),
+                  if (profile != null) SizedBox(height: 210, child: CharacterView(profile.look)),
                   const SizedBox(height: 10),
                   Text(_headline, style: display(48, color: SuonaColors.spot)),
                   const SizedBox(height: 8),
@@ -102,7 +122,9 @@ class ResultScreen extends StatelessWidget {
                         CoinCount(coins, size: 34),
                         if (bonus > 0)
                           Text(
-                            tr('davon $bonus Sterne-Bonus', 'incl. $bonus star bonus'),
+                            adventure != null
+                                ? tr('davon $bonus Bonus fürs erste Mal', 'incl. $bonus first-time bonus')
+                                : tr('davon $bonus Sterne-Bonus', 'incl. $bonus star bonus'),
                             style: const TextStyle(color: SuonaColors.onStageMuted, fontSize: 15),
                           ),
                       ],
@@ -124,12 +146,30 @@ class ResultScreen extends StatelessWidget {
                       ],
                     ),
                   ],
+                  if (adventure != null && !adventure!.passed) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      adventure!.crowdGone
+                          ? tr(
+                              'Zu viele Fehler hintereinander. Mit einem Schild-Pedal aus dem Shop geht es leichter.',
+                              'Too many mistakes in a row. A shield pedal from the shop makes it easier.',
+                            )
+                          : tr(
+                              'Für einen Stern brauchst du 6 von 10 richtig.',
+                              'You need 6 out of 10 right for a star.',
+                            ),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: SuonaColors.onStageMuted, fontSize: 17),
+                    ),
+                  ],
                   const SizedBox(height: 28),
                   Wrap(
                     spacing: 16,
                     runSpacing: 12,
                     alignment: WrapAlignment.center,
                     children: [
+                      if (adventure != null && adventure!.passed && profile != null)
+                        ?nextLevelButton(context, state, profile, config.adventure!),
                       FilledButton.icon(
                         onPressed: () => Navigator.of(context).pushReplacement(
                           MaterialPageRoute<void>(
@@ -147,8 +187,8 @@ class ResultScreen extends StatelessWidget {
                       ),
                       FilledButton.icon(
                         onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.home_rounded, size: 28),
-                        label: Text(tr('Fertig', 'Done')),
+                        icon: Icon(adventure != null ? Icons.map_rounded : Icons.home_rounded, size: 28),
+                        label: Text(adventure != null ? tr('Zur Karte', 'To the map') : tr('Fertig', 'Done')),
                         style: FilledButton.styleFrom(
                           backgroundColor: SuonaColors.stageLine,
                           foregroundColor: SuonaColors.onStage,

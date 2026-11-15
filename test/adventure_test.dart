@@ -1,0 +1,130 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:suona/core/character/character_art.dart';
+import 'package:suona/core/game/adventure.dart';
+import 'package:suona/core/game/question.dart';
+import 'package:suona/core/game/shop.dart';
+import 'package:suona/core/music/curriculum.dart';
+import 'package:suona/core/music/note_names.dart';
+import 'package:suona/core/profiles/profile.dart';
+
+void main() {
+  group('Stationen und Lehrplan', () {
+    test('9 Schritte auf 8 Stationen: alles verteilt, nichts doppelt', () {
+      final ranges = [for (var s = 0; s < 8; s++) Adventure.stepsOf(s, 9)];
+      expect(ranges.first, (0, 0));
+      expect(ranges.last, (7, 8));
+      for (var s = 1; s < 8; s++) {
+        expect(ranges[s].$1, ranges[s - 1].$2 + 1);
+      }
+    });
+
+    test('Wenige Schritte: Stationen wiederholen', () {
+      for (var s = 0; s < 8; s++) {
+        final (a, b) = Adventure.stepsOf(s, 3);
+        expect(a, inInclusiveRange(0, 2));
+        expect(b, greaterThanOrEqualTo(a));
+      }
+      expect(Adventure.stepsOf(7, 3).$2, 2);
+    });
+
+    test('Freischalten: Auftritt und Lehrplan-Schritt', () {
+      final c = BuiltInCurricula.guitarTalks;
+      final p = Profile(id: 'x', nickname: 'Mia', character: Character.luna, step: 0);
+      expect(Adventure.levelOpen(p, c, 0, 0), isTrue);
+      expect(Adventure.levelOpen(p, c, 0, 1), isFalse);
+      for (var l = 0; l < 6; l++) {
+        Adventure.record(p, c.id, 0, l, 2);
+      }
+      // Station 1 braucht Schritt 1 im Lehrplan.
+      expect(Adventure.lockOf(p, c, 1), StationLock.teacher);
+      p.step = 1;
+      expect(Adventure.lockOf(p, c, 1), isNull);
+      expect(Adventure.lockOf(p, c, 2), StationLock.previous);
+    });
+
+    test('Bestes Ergebnis zählt, erstes Schaffen gibt Bonus', () {
+      final p = Profile(id: 'x', nickname: 'Mia', character: Character.luna);
+      expect(Adventure.record(p, 'c', 0, 0, 1), isTrue);
+      expect(Adventure.record(p, 'c', 0, 0, 3), isFalse);
+      expect(Adventure.record(p, 'c', 0, 0, 2), isFalse);
+      expect(Adventure.stars(p, 'c', 0, 0), 3);
+      expect(Adventure.record(p, 'c', 0, 1, 0), isFalse);
+      // Hin und zurück als Datei.
+      final again = Profile.fromJson(jsonDecode(jsonEncode(p.toJson())) as Map<String, dynamic>);
+      expect(Adventure.stars(again, 'c', 0, 0), 3);
+    });
+
+    test('Level-Plan: Aufwärmen mit neuen Tönen, Auftritt gemischt mit Zeit', () {
+      final c = BuiltInCurricula.guitarTalks;
+      final warm = Adventure.plan(c, AccidentalStyle.mixed, 1, 0);
+      expect(warm.pool.map((p) => p.key).toSet(), {'B3', 'C4', 'D4'});
+      expect(warm.timeLimit, isNull);
+      expect(warm.types, [QuestionType.nameFromStaff]);
+      final concert = Adventure.plan(c, AccidentalStyle.mixed, 1, Adventure.concertLevel);
+      expect(concert.pool.length, 6);
+      expect(concert.length, 15);
+      expect(concert.types.length, 4);
+      expect(concert.timeLimit, isNotNull);
+      // Zeitdruck wird mit jeder Station knapper.
+      expect(Adventure.timeFor(7, 4)!.inSeconds, lessThan(Adventure.timeFor(2, 4)!.inSeconds));
+    });
+
+    test('Sterne im Abenteuer', () {
+      expect(Adventure.starsForRound(9, 10), 3);
+      expect(Adventure.starsForRound(8, 10), 2);
+      expect(Adventure.starsForRound(6, 10), 1);
+      expect(Adventure.starsForRound(5, 10), 0);
+    });
+  });
+
+  group('Shop', () {
+    test('Kaufen kostet Münzen, nur einmal', () {
+      final p = Profile(id: 'x', nickname: 'Mia', character: Character.luna, coins: 100);
+      final beanie = Shop.byId('hat_beanie')!;
+      expect(Shop.owns(p, beanie), isFalse);
+      expect(Shop.buy(p, beanie), isTrue);
+      expect(p.coins, 20);
+      expect(Shop.buy(p, beanie), isFalse);
+      expect(Shop.buy(p, Shop.byId('vest_leather')!), isFalse); // zu teuer
+      expect(Shop.owns(p, Shop.byId('g_double')!), isTrue); // Grundgitarren gratis
+    });
+  });
+
+  group('Aussehen', () {
+    test('Als Datei, Figurwechsel gibt Grund-Look', () {
+      final p = Profile(id: 'x', nickname: 'Mia', character: Character.luna);
+      p.look = p.look.copyWith(hair: 'blue', hat: 'hat_beanie');
+      final again = Profile.fromJson(jsonDecode(jsonEncode(p.toJson())) as Map<String, dynamic>);
+      expect(again.look.hair, 'blue');
+      expect(again.look.hat, 'hat_beanie');
+      again.character = Character.fuzz;
+      expect(again.look.character, Character.fuzz);
+      expect(again.look.hair, CharacterLook.defaults(Character.fuzz).hair);
+    });
+
+    test('Figur zusammensetzen: Farben und Teile eingesetzt', () {
+      CharacterArt.loadFrom({
+        for (final c in Character.values) c: File('assets/characters/${c.name}_template.svg').readAsStringSync(),
+      }, jsonDecode(File('assets/characters/items.json').readAsStringSync()) as Map<String, dynamic>);
+      final art = CharacterArt.instance;
+      for (final c in Character.values) {
+        final look = CharacterLook.defaults(c)
+            .copyWith(hat: 'hat_crown', glasses: 'glasses_sun', vest: 'vest_jeans', guitar: 'g_star');
+        final svg = art.svg(look);
+        expect(svg.contains('{{'), isFalse, reason: 'alle Farben ersetzt');
+        expect(svg.contains('<!--slot:guitar-->'), isFalse);
+        expect(svg.contains('<!--slot:hat-->'), isFalse);
+        expect(svg.contains('#8E6CEF'), isTrue); // Sternen-Gitarre
+        expect(art.svg(look, face: true).contains('viewBox="5'), isTrue);
+        // Jedes Shop-Teil (ausser Pedalen) gibt es für beide Figuren.
+        for (final item in Shop.items.where((i) => i.slot != ShopSlot.pedal)) {
+          final ok = item.slot == ShopSlot.guitar ? art.hasGuitar(item.id) : art.hasItem(c, item.id);
+          expect(ok, isTrue, reason: '${item.id} für ${c.name}');
+        }
+      }
+    });
+  });
+}

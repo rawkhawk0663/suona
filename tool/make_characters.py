@@ -1,17 +1,24 @@
 #!/usr/bin/env python3
-"""Zeichnet Luna und Fuzz im Suona-Stil („Mix 2“: Chibi-Augen, Rock-Cartoon-Konturen)
-und schreibt sie nach assets/characters/:
+"""Zeichnet Luna und Fuzz im Suona-Stil („Mix 2“: Chibi-Augen, Rock-Cartoon-Konturen).
 
-  luna.svg, fuzz.svg            ganze Figur (Seitenverhältnis 3:4)
-  luna_face.svg, fuzz_face.svg  nur der Kopf, für runde Profilbilder
+Ausgabe nach assets/characters/:
+
+  luna.svg, fuzz.svg                 fertige Figur mit Grundfarben (Vorschau, Download-Bild)
+  luna_template.svg, fuzz_template.svg
+                                     Vorlage für die App: Farben als Platzhalter
+                                     ({{skin}}, {{hair}} …) und Stellen für Shop-Teile
+                                     (<!--slot:hat--> …). Die App setzt beides zur Laufzeit ein.
+  items.json                         Shop-Teile als SVG-Stücke, pro Figur
 
 Aufbau jeder Figur: Haare hinten, Körper (mit Gitarre und Armen), Kopf.
 Der Kopf wird um den Halsansatz vergrössert (HEAD_SCALE), der Körper zu den
 Füssen hin verkleinert (BODY_SCALE). Konturen bleiben dabei gleich dick.
-Später kommen hier die Shop-Teile dazu (Kleider, Frisuren, Gitarren als Ebenen).
+Shop-Teile werden in diese Gruppen eingesetzt, ihre Konturen deshalb gleich
+umgerechnet.
 
 Aufruf:  python3 tool/make_characters.py
 """
+import json
 import os
 import re
 import sys
@@ -20,89 +27,112 @@ OUT = '#15121F'
 W = 4.5
 HEAD_SCALE = 1.16
 BODY_SCALE = 0.95
+NECK = {'luna': 132, 'fuzz': 134}
+GUITAR_ROTATION = {'luna': -32, 'fuzz': -34}
+
+# Gemeinsamer Ausschnitt für beide ganzen Figuren: gleich gross dargestellt,
+# Fuzz' Haarspitzen oben, Kopfbedeckungen und die Gitarrenköpfe rechts haben Platz.
+FULL_BOX = '16 -42 256 342'
+# Ausschnitte für die runden Profilbilder (in den Koordinaten der fertigen Figur)
+FACE_BOX = {'luna': '58 24 124 124', 'fuzz': '56 22 128 128'}
+
+# Grundfarben (die App kennt dieselben Werte als Standard-Look)
+DEFAULTS = {
+    'luna': {'skin': '#F3BE98', 'skinS': '#D99A72', 'hair': '#3D2263', 'hairS': '#2A1747', 'hairL': '#7A4FC2',
+             'eyes': '#5B3F8C', 'shirt': '#8E6CEF', 'shirtS': '#6A48C9'},
+    'fuzz': {'skin': '#F4C7A1', 'skinS': '#D9A27A', 'hair': '#4A2A16', 'hairS': '#33190A', 'hairL': '#7A4A2A',
+             'eyes': '#3A2416', 'shirt': '#23A89C', 'shirtS': '#167F75'},
+}
+DEFAULT_GUITAR = {'luna': 'g_pointy', 'fuzz': 'g_double'}
+
+T = {k: '{{' + k + '}}' for k in DEFAULTS['luna']}
+
 
 class Svg:
-    def __init__(s): s.defs=[]; s.body=[]; s.n=0
+    def __init__(s, prefix='c'):
+        s.defs = []
+        s.body = []
+        s.n = 0
+        s.prefix = prefix
+
     def shape(s, tag, attrs, fill, shadow=None, shade=None, stroke=True):
-        """tag+attrs = Form; shade = (x,y,w,h) Rechteck, das im Schatten liegt (in derselben Drehung)."""
-        s.n+=1; cid=f'c{s.n}'
-        a=' '.join(f'{k}="{v}"' for k,v in attrs.items())
+        """Form mit Füllung, Schatten als Sichel (shade = Verschiebung) und Kontur."""
+        s.n += 1
+        cid = f'{s.prefix}{s.n}'
+        a = ' '.join(f'{k}="{v}"' for k, v in attrs.items())
         s.body.append(f'<{tag} {a} fill="{fill}"/>')
         if shadow and shade:
-            # Schatten als Sichel: Schattenfarbe in der Form, darüber die Grundfarbe leicht verschoben.
             s.defs.append(f'<clipPath id="{cid}"><{tag} {a}/></clipPath>')
-            dx,dy=(-9,-5) if len(shade)==4 else shade
-            s.body.append(f'<g clip-path="url(#{cid})"><rect x="-50" y="-50" width="400" height="450" fill="{shadow}"/><{tag} {a} fill="{fill}" transform="translate({dx} {dy})"/></g>')
+            dx, dy = shade
+            s.body.append(f'<g clip-path="url(#{cid})"><rect x="-50" y="-50" width="400" height="450" fill="{shadow}"/>'
+                          f'<{tag} {a} fill="{fill}" transform="translate({dx} {dy})"/></g>')
         if stroke:
             s.body.append(f'<{tag} {a} fill="none" stroke="{OUT}" stroke-width="{W}" stroke-linejoin="round"/>')
-    def raw(s, t): s.body.append(t)
+
+    def raw(s, t):
+        s.body.append(t)
+
     def arm(s, d, skin, width=13):
-        s.raw(f'<path d="{d}" fill="none" stroke="{OUT}" stroke-width="{width+2*W}" stroke-linecap="round"/>')
+        s.raw(f'<path d="{d}" fill="none" stroke="{OUT}" stroke-width="{width + 2 * W}" stroke-linecap="round"/>')
         s.raw(f'<path d="{d}" fill="none" stroke="{skin}" stroke-width="{width}" stroke-linecap="round"/>')
-    def out(s): return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 320"><defs>'+''.join(s.defs)+'</defs>'+'\n'.join(s.body)+'</svg>'
 
 
-def grp(svg_parts, transform, scale):
+def scaled(parts, scale):
     # Konturen gleich dick halten, obwohl die Gruppe vergrössert oder verkleinert wird.
-    body = '\n'.join(svg_parts)
-    body = re.sub(r'stroke-width="([0-9.]+)"', lambda m: f'stroke-width="{float(m.group(1)) / scale:.2f}"', body)
-    return f'<g transform="{transform}">{body}</g>'
+    body = '\n'.join(parts)
+    return re.sub(r'stroke-width="([0-9.]+)"', lambda m: f'stroke-width="{float(m.group(1)) / scale:.2f}"', body)
+
 
 def eyes(s, iris, lashes):
     for cx in (101, 139):
         s.raw(f'<ellipse cx="{cx}" cy="95" rx="10.5" ry="13.5" fill="{iris}" stroke="{OUT}" stroke-width="3"/>')
         s.raw(f'<ellipse cx="{cx}" cy="99" rx="6" ry="6.5" fill="{OUT}" opacity=".55"/>')
-        s.raw(f'<circle cx="{cx+3.5}" cy="89" r="4" fill="#fff"/><circle cx="{cx-3.5}" cy="101" r="1.8" fill="#fff"/>')
+        s.raw(f'<circle cx="{cx + 3.5}" cy="89" r="4" fill="#fff"/><circle cx="{cx - 3.5}" cy="101" r="1.8" fill="#fff"/>')
     if lashes:
         s.raw(f'<path d="M89 88 l-6 -4 M151 88 l6 -4" stroke="{OUT}" stroke-width="3" stroke-linecap="round"/>')
 
+
+# ---------------------------------------------------------------- Figuren
+
 def luna_parts():
-    skin, skinS = '#F3BE98', '#D99A72'
-    back = Svg(); body = Svg(); head = Svg()
-    for x in (back, body, head): x.n = {'back': 0, 'body': 200, 'head': 400}[['back', 'body', 'head'][[back, body, head].index(x)]]
-    back.shape('path', {'d': 'M74 72 C66 108 66 136 54 160 C76 164 90 154 96 142 L148 142 C154 154 168 164 190 160 C178 136 178 108 168 70 C160 40 136 28 116 30 C96 32 80 46 74 72 Z'}, '#3D2263', '#2A1747', (9, 0))
-    back.raw('<path d="M170 92 C174 116 174 136 182 152" stroke="#7A4FC2" stroke-width="4" fill="none" stroke-linecap="round"/>')
+    back, body, head = Svg('lb'), Svg('ly'), Svg('lh')
+    back.shape('path', {'d': 'M74 72 C66 108 66 136 54 160 C76 164 90 154 96 142 L148 142 C154 154 168 164 190 160 C178 136 178 108 168 70 C160 40 136 28 116 30 C96 32 80 46 74 72 Z'}, T['hair'], T['hairS'], (9, 0))
+    back.raw(f'<path d="M170 92 C174 116 174 136 182 152" stroke="{T["hairL"]}" stroke-width="4" fill="none" stroke-linecap="round"/>')
     b = body
     for x in (98, 128):
         b.shape('rect', {'x': x, 'y': 220, 'width': 16, 'height': 52, 'rx': 4}, '#2A2340')
         for y in range(228, 270, 9):
-            b.raw(f'<rect x="{x+2}" y="{y}" width="12" height="4" fill="#8E6CEF"/>')
+            b.raw(f'<rect x="{x + 2}" y="{y}" width="12" height="4" fill="#8E6CEF"/>')
     b.shape('path', {'d': 'M92 266 L116 266 L118 292 L84 292 Q84 280 92 278 Z'}, '#1E1A2E')
     b.shape('path', {'d': 'M126 266 L150 266 L156 278 Q164 280 164 292 L126 292 Z'}, '#1E1A2E')
     b.raw('<path d="M84 288 L118 288 M126 288 L164 288" stroke="#FFC233" stroke-width="3"/>')
     b.shape('path', {'d': 'M80 192 L160 192 L174 226 L66 226 Z'}, '#FF6B78', '#D94A5B', (-9, -5))
     b.raw(''.join(f'<rect x="{x}" y="215" width="6" height="2.5" fill="#15121F"/>' for x in range(74, 166, 11)))
-    b.shape('path', {'d': 'M92 136 Q120 128 148 136 L154 196 L86 196 Z'}, '#8E6CEF', '#6A48C9', (-9, -5))
+    b.shape('path', {'d': 'M92 136 Q120 128 148 136 L154 196 L86 196 Z'}, T['shirt'], T['shirtS'], (-9, -5))
     b.raw('<path d="M110 162 l4 9 10 1 -8 6 3 10 -9 -5 -9 5 3 -10 -8 -6 10 -1 z" fill="#FFC233" stroke="#15121F" stroke-width="2.5" stroke-linejoin="round"/>')
-    b.arm('M148 146 Q170 164 182 146', skin)
-    g = Svg(); g.n = 300
-    g.shape('rect', {'x': 128, 'y': 206, 'width': 86, 'height': 10, 'rx': 2}, '#B9773F')
-    g.shape('path', {'d': 'M212 202 L236 196 L230 211 L236 226 L212 220 Z'}, '#F4F2FF')
-    g.shape('path', {'d': 'M60 190 L122 198 L140 211 L122 224 L60 232 L78 211 Z'}, '#22B8A8', '#16897D', (-8, -6))
-    g.raw('<rect x="100" y="203" width="9" height="16" rx="2" fill="#15121F"/><rect x="116" y="203" width="9" height="16" rx="2" fill="#15121F"/>')
-    g.raw('<path d="M84 209 L232 209 M84 213 L232 213" stroke="#F4F2FF" stroke-width="1.2"/>')
-    b.defs += g.defs
-    b.raw('<g transform="rotate(-32 110 211)">' + '\n'.join(g.body) + '</g>')
-    b.arm('M94 146 Q70 182 102 206', skin)
-    b.shape('circle', {'cx': 104, 'cy': 206, 'r': 9}, skin)
-    b.shape('circle', {'cx': 180, 'cy': 146, 'r': 8}, skin)
+    b.raw('<!--slot:vest-->')
+    b.arm('M148 146 Q170 164 182 146', T['skin'])
+    b.raw(f'<g transform="rotate({GUITAR_ROTATION["luna"]} 110 211)"><!--slot:guitar--></g>')
+    b.arm('M94 146 Q70 182 102 206', T['skin'])
+    b.shape('circle', {'cx': 104, 'cy': 206, 'r': 9}, T['skin'])
+    b.shape('circle', {'cx': 180, 'cy': 146, 'r': 8}, T['skin'])
     b.raw('<rect x="88" y="190" width="14" height="9" rx="2" fill="#FFC233" stroke="#15121F" stroke-width="3" transform="rotate(30 95 194)"/>')
-    b.shape('rect', {'x': 110, 'y': 122, 'width': 20, 'height': 18}, skin, skinS, (0, -8))
+    b.shape('rect', {'x': 110, 'y': 122, 'width': 20, 'height': 18}, T['skin'], T['skinS'], (0, -8))
     h = head
-    h.shape('ellipse', {'cx': 120, 'cy': 88, 'rx': 46, 'ry': 46}, skin, skinS, (-8, -5))
-    h.shape('path', {'d': 'M72 92 C68 52 94 34 124 36 C154 38 174 58 170 90 C158 70 136 62 110 70 C96 76 84 84 72 92 Z'}, '#3D2263', '#2A1747', (-6, 4))
-    h.raw('<path d="M156 44 l4 9 10 1 -8 6 3 10 -9 -5 -9 5 3 -10 -8 -6 10 -1 z" fill="#FFC233" stroke="#15121F" stroke-width="3" stroke-linejoin="round"/>')
-    eyes(h, '#5B3F8C', True)
+    h.shape('ellipse', {'cx': 120, 'cy': 88, 'rx': 46, 'ry': 46}, T['skin'], T['skinS'], (-8, -5))
+    h.shape('path', {'d': 'M72 92 C68 52 94 34 124 36 C154 38 174 58 170 90 C158 70 136 62 110 70 C96 76 84 84 72 92 Z'}, T['hair'], T['hairS'], (-6, 4))
+    h.raw('<!--slot:hairclip--><path d="M156 44 l4 9 10 1 -8 6 3 10 -9 -5 -9 5 3 -10 -8 -6 10 -1 z" fill="#FFC233" stroke="#15121F" stroke-width="3" stroke-linejoin="round"/><!--/slot:hairclip-->')
+    eyes(h, T['eyes'], True)
     h.raw('<path d="M89 78 Q100 72 111 77 M129 77 Q140 72 151 78" stroke="#15121F" stroke-width="4" stroke-linecap="round" fill="none"/>')
     h.raw('<ellipse cx="86" cy="112" rx="8" ry="5" fill="#FF8A9A" opacity=".6"/><ellipse cx="154" cy="112" rx="8" ry="5" fill="#FF8A9A" opacity=".6"/>')
     h.raw('<path d="M108 114 Q121 128 134 113 Q121 118 108 114 Z" fill="#7E1F2E" stroke="#15121F" stroke-width="3" stroke-linejoin="round"/>')
     h.raw('<path d="M112 115 L130 114.5 L128 118 L114 118.5 Z" fill="#fff"/>')
+    h.raw('<!--slot:glasses--><!--slot:hat-->')
     return back, body, head
 
+
 def fuzz_parts():
-    skin, skinS = '#F4C7A1', '#D9A27A'
-    back = Svg(); body = Svg(); head = Svg()
-    back.n, body.n, head.n = 500, 600, 700
+    back, body, head = Svg('fb'), Svg('fy'), Svg('fh')
     b = body
     b.shape('path', {'d': 'M98 222 L116 222 L110 278 L92 278 Z'}, '#3557A8', '#24407F', (-6, 0))
     b.shape('path', {'d': 'M124 222 L142 222 L150 278 L132 278 Z'}, '#3557A8', '#24407F', (-6, 0))
@@ -110,71 +140,309 @@ def fuzz_parts():
     b.shape('path', {'d': 'M88 274 L114 274 L118 292 L78 292 Q78 280 88 278 Z'}, '#F4F2FF', '#C9C6E0', (-6, -4))
     b.shape('path', {'d': 'M128 274 L152 274 Q162 278 164 292 L126 292 Z'}, '#F4F2FF', '#C9C6E0', (-6, -4))
     b.raw('<path d="M78 288 L118 288 M126 288 L164 288" stroke="#E23D3D" stroke-width="3.5"/>')
-    b.shape('path', {'d': 'M88 136 Q120 126 152 136 L158 226 L82 226 Z'}, '#23A89C', '#167F75', (-9, -5))
+    b.shape('path', {'d': 'M88 136 Q120 126 152 136 L158 226 L82 226 Z'}, T['shirt'], T['shirtS'], (-9, -5))
     b.raw('<path d="M128 150 L114 178 L124 178 L116 204 L138 170 L128 170 L136 150 Z" fill="#FFC233" stroke="#15121F" stroke-width="3" stroke-linejoin="round"/>')
-    b.arm('M150 146 Q174 164 186 144', skin)
-    g = Svg(); g.n = 800
-    g.shape('rect', {'x': 130, 'y': 206, 'width': 86, 'height': 10, 'rx': 2}, '#B9773F')
-    g.shape('rect', {'x': 212, 'y': 200, 'width': 24, 'height': 22, 'rx': 5}, '#15121F')
-    g.shape('path', {'d': 'M64 211 C64 188 86 184 100 192 C108 186 120 184 132 192 L140 196 L132 202 C140 206 140 216 132 220 L140 226 L132 230 C120 238 108 236 100 230 C86 238 64 234 64 211 Z'}, '#E23D3D', '#B52530', (-8, -6))
-    g.raw('<path d="M74 214 C84 222 100 226 112 220 L106 208 C96 214 84 214 74 214 Z" fill="#F4F2FF" stroke="#15121F" stroke-width="2.5"/>')
-    g.raw('<rect x="100" y="203" width="9" height="16" rx="2" fill="#15121F"/><rect x="116" y="203" width="9" height="16" rx="2" fill="#15121F"/>')
-    g.raw('<path d="M84 209 L232 209 M84 213 L232 213" stroke="#F4F2FF" stroke-width="1.2"/>')
-    b.defs += g.defs
-    b.raw('<g transform="rotate(-34 110 211)">' + '\n'.join(g.body) + '</g>')
-    b.arm('M92 146 Q66 182 100 206', skin)
-    b.shape('circle', {'cx': 102, 'cy': 206, 'r': 9}, skin)
-    b.shape('circle', {'cx': 184, 'cy': 144, 'r': 8}, skin)
+    b.raw('<!--slot:vest-->')
+    b.arm('M150 146 Q174 164 186 144', T['skin'])
+    b.raw(f'<g transform="rotate({GUITAR_ROTATION["fuzz"]} 110 211)"><!--slot:guitar--></g>')
+    b.arm('M92 146 Q66 182 100 206', T['skin'])
+    b.shape('circle', {'cx': 102, 'cy': 206, 'r': 9}, T['skin'])
+    b.shape('circle', {'cx': 184, 'cy': 144, 'r': 8}, T['skin'])
     b.raw('<rect x="84" y="186" width="16" height="10" rx="2" fill="#15121F" transform="rotate(35 92 191)"/>')
-    b.shape('rect', {'x': 110, 'y': 124, 'width': 20, 'height': 16}, skin, skinS, (0, -8))
+    b.shape('rect', {'x': 110, 'y': 124, 'width': 20, 'height': 16}, T['skin'], T['skinS'], (0, -8))
     h = head
-    h.shape('ellipse', {'cx': 74, 'cy': 96, 'rx': 9, 'ry': 11}, skin)
-    h.shape('ellipse', {'cx': 166, 'cy': 96, 'rx': 9, 'ry': 11}, skin, skinS, (-4, 0))
-    h.shape('ellipse', {'cx': 120, 'cy': 90, 'rx': 46, 'ry': 46}, skin, skinS, (-8, -5))
-    h.shape('path', {'d': 'M76 84 C72 62 78 50 88 42 L74 18 L100 26 L102 2 L120 22 L136 -2 L142 22 L164 6 L162 30 L186 24 L172 48 C180 60 170 68 166 84 L160 70 L150 78 L144 62 L132 74 L124 58 L114 72 L104 60 L96 72 L88 64 Z'}, '#4A2A16', '#33190A', (-8, 4))
-    h.raw('<path d="M106 14 L112 36 M138 8 L138 32 M162 20 L154 40" stroke="#7A4A2A" stroke-width="3" stroke-linecap="round"/>')
-    eyes(h, '#3A2416', False)
+    h.shape('ellipse', {'cx': 74, 'cy': 96, 'rx': 9, 'ry': 11}, T['skin'])
+    h.shape('ellipse', {'cx': 166, 'cy': 96, 'rx': 9, 'ry': 11}, T['skin'], T['skinS'], (-4, 0))
+    h.shape('ellipse', {'cx': 120, 'cy': 90, 'rx': 46, 'ry': 46}, T['skin'], T['skinS'], (-8, -5))
+    h.shape('path', {'d': 'M76 84 C72 62 78 50 88 42 L74 18 L100 26 L102 2 L120 22 L136 -2 L142 22 L164 6 L162 30 L186 24 L172 48 C180 60 170 68 166 84 L160 70 L150 78 L144 62 L132 74 L124 58 L114 72 L104 60 L96 72 L88 64 Z'}, T['hair'], T['hairS'], (-8, 4))
+    h.raw(f'<path d="M106 14 L112 36 M138 8 L138 32 M162 20 L154 40" stroke="{T["hairL"]}" stroke-width="3" stroke-linecap="round"/>')
+    eyes(h, T['eyes'], False)
     h.raw('<path d="M88 78 L112 82 M128 81 Q140 71 152 79" stroke="#15121F" stroke-width="5" stroke-linecap="round" fill="none"/>')
     h.raw('<ellipse cx="85" cy="113" rx="8" ry="5" fill="#FF8A9A" opacity=".5"/><ellipse cx="155" cy="113" rx="8" ry="5" fill="#FF8A9A" opacity=".5"/>')
     h.raw('<g fill="#C98E62"><circle cx="84" cy="108" r="1.3"/><circle cx="89" cy="106" r="1.3"/><circle cx="156" cy="108" r="1.3"/><circle cx="151" cy="106" r="1.3"/></g>')
     h.raw('<path d="M104 114 Q124 132 140 111 Q122 119 104 114 Z" fill="#7E1F2E" stroke="#15121F" stroke-width="3" stroke-linejoin="round"/>')
     h.raw('<path d="M108 115 L136 113 L133 118 L111 119 Z" fill="#fff"/>')
+    h.raw('<!--slot:glasses--><!--slot:hat-->')
     return back, body, head
 
 
-def compose(parts, head_scale, body_scale, neck_y):
-    back, body, head = parts
-    # Körper zu den Füssen (y 292) hin skalieren, dann den Kopf auf den neuen Hals setzen.
-    new_neck = 292 - (292 - neck_y) * body_scale
-    body_t = f'translate(120 292) scale({body_scale}) translate(-120 -292)'
-    head_t = f'translate(120 {new_neck}) scale({head_scale}) translate(-120 -{neck_y})'
-    top = new_neck - (neck_y - (-4)) * head_scale
-    vb_top = min(-4, top - 6)
-    height = 300 - vb_top
-    width = height * 0.75
-    vb_left = 120 - width / 2
+# ---------------------------------------------------------------- Gitarren
+# Alle Gitarren in denselben Koordinaten (unverdreht, Korpus um x 60–140,
+# Hals bis x 214, Kopfplatte bis x 236). Die Figur dreht sie selbst.
+
+def neck(s, head_fill='#F4F2FF', pointy=False):
+    s.shape('rect', {'x': 128, 'y': 206, 'width': 86, 'height': 10, 'rx': 2}, '#B9773F')
+    s.raw(''.join(f'<rect x="{x}" y="206" width="1.4" height="10" fill="#E8D9B8"/>' for x in (146, 162, 176, 189, 200, 210)))
+    if pointy:
+        s.shape('path', {'d': 'M212 202 L236 196 L230 211 L236 226 L212 220 Z'}, head_fill)
+    else:
+        s.shape('rect', {'x': 212, 'y': 200, 'width': 24, 'height': 22, 'rx': 5}, head_fill)
+
+
+def strings(s):
+    s.raw('<path d="M84 209 L232 209 M84 213 L232 213" stroke="#F4F2FF" stroke-width="1.2"/>')
+
+
+def pickups(s):
+    s.raw('<rect x="100" y="203" width="9" height="16" rx="2" fill="#15121F"/><rect x="116" y="203" width="9" height="16" rx="2" fill="#15121F"/>')
+
+
+POINTY = 'M60 190 L122 198 L140 211 L122 224 L60 232 L78 211 Z'
+DOUBLE = 'M64 211 C64 188 86 184 100 192 C108 186 120 184 132 192 L140 196 L132 202 C140 206 140 216 132 220 L140 226 L132 230 C120 238 108 236 100 230 C86 238 64 234 64 211 Z'
+
+
+def guitar_pointy(prefix, color, shade, head='#F4F2FF'):
+    s = Svg(prefix)
+    neck(s, head, pointy=True)
+    s.shape('path', {'d': POINTY}, color, shade, (-8, -6))
+    pickups(s)
+    strings(s)
+    return s
+
+
+def guitar_double(prefix, color, shade, guard='#F4F2FF', head='#15121F'):
+    s = Svg(prefix)
+    neck(s, head)
+    s.shape('path', {'d': DOUBLE}, color, shade, (-8, -6))
+    s.raw(f'<path d="M74 214 C84 222 100 226 112 220 L106 208 C96 214 84 214 74 214 Z" fill="{guard}" stroke="#15121F" stroke-width="2.5"/>')
+    pickups(s)
+    strings(s)
+    return s
+
+
+def guitar_acoustic(prefix):
+    s = Svg(prefix)
+    neck(s, '#7A4A2A')
+    s.shape('path', {'d': 'M58 211 C58 186 82 182 96 194 C104 188 120 186 130 196 C142 204 142 218 130 226 C120 236 104 234 96 228 C82 240 58 236 58 211 Z'}, '#E0A863', '#B57B3A', (-8, -6))
+    s.raw('<circle cx="104" cy="211" r="9" fill="#2B1A10" stroke="#15121F" stroke-width="2.5"/>')
+    s.raw('<circle cx="104" cy="211" r="12.5" fill="none" stroke="#7A4A2A" stroke-width="2"/>')
+    s.raw('<rect x="72" y="204" width="6" height="14" rx="2" fill="#2B1A10"/>')
+    strings(s)
+    return s
+
+
+def guitar_star(prefix):
+    s = Svg(prefix)
+    neck(s, '#FFC233', pointy=True)
+    import math
+    cx, cy, ro, ri = 98, 211, 40, 19
+    pts = []
+    for i in range(10):
+        r = ro if i % 2 == 0 else ri
+        a = math.radians(-90 + i * 36 + 18)
+        pts.append(f'{cx + r * math.cos(a):.1f} {cy + r * math.sin(a):.1f}')
+    s.shape('path', {'d': 'M' + ' L'.join(pts) + ' Z'}, '#8E6CEF', '#6A48C9', (-8, -6))
+    s.raw('<circle cx="98" cy="211" r="5" fill="#FFC233" stroke="#15121F" stroke-width="2"/>')
+    pickups(s)
+    strings(s)
+    return s
+
+
+GUITARS = {
+    'g_pointy': lambda: guitar_pointy('gp', '#22B8A8', '#16897D'),
+    'g_double': lambda: guitar_double('gd', '#E23D3D', '#B52530'),
+    'g_pointy_gold': lambda: guitar_pointy('gpg', '#FFC233', '#C8901A', head='#15121F'),
+    'g_double_black': lambda: guitar_double('gdb', '#2B2340', '#1A1428', guard='#E23D3D', head='#F4F2FF'),
+    'g_acoustic': lambda: guitar_acoustic('ga'),
+    'g_star': lambda: guitar_star('gs'),
+}
+
+
+# ---------------------------------------------------------------- Kopfteile
+# Koordinaten des Kopfes (vor der Vergrösserung). Luna: Kopf um (120, 88),
+# Fuzz: um (120, 90), seine Haarspitzen reichen bis y = -2.
+
+HEAD_Y = {'luna': 0, 'fuzz': -8}   # Fuzz' Kopfteile sitzen etwas höher (Frisur)
+
+
+def beanie(prefix, who):
+    s = Svg(prefix)
+    dy = HEAD_Y[who] - (14 if who == 'fuzz' else 0)
+    s.shape('path', {'d': f'M70 {66 + dy} C66 {12 + dy} 174 {12 + dy} 170 {66 + dy} Z'}, '#E23D3D', '#B52530', (-7, 5))
+    s.shape('path', {'d': f'M64 {58 + dy} Q120 {46 + dy} 176 {58 + dy} L176 {74 + dy} Q120 {62 + dy} 64 {74 + dy} Z'}, '#B52530')
+    s.raw(''.join(f'<rect x="{x}" y="{58 + dy}" width="3" height="12" rx="1.5" fill="#8A1C25"/>' for x in range(74, 170, 10)))
+    s.shape('circle', {'cx': 120, 'cy': 14 + dy, 'r': 10}, '#F4F2FF', '#C9C6E0', (-3, -3))
+    return s
+
+
+def bandana(prefix, who):
+    s = Svg(prefix)
+    y = 60 if who == 'luna' else 58
+    s.shape('path', {'d': f'M70 {y + 6} Q120 {y - 10} 170 {y + 6} L170 {y + 18} Q120 {y + 2} 70 {y + 18} Z'}, '#E23D3D', '#B52530', (0, 4))
+    s.raw(''.join(f'<circle cx="{x}" cy="{y + 7 - (2 if 100 < x < 140 else 0)}" r="2" fill="#F4F2FF"/>' for x in range(82, 162, 14)))
+    s.shape('path', {'d': f'M168 {y + 8} L190 {y} L186 {y + 14} L196 {y + 24} L172 {y + 20} Z'}, '#E23D3D', '#B52530', (-3, 2))
+    return s
+
+
+def headphones(prefix, who):
+    s = Svg(prefix)
+    top = 18 if who == 'luna' else 4
+    s.raw(f'<path d="M70 98 C64 {top} 176 {top} 170 98" fill="none" stroke="{OUT}" stroke-width="13" stroke-linecap="round"/>')
+    s.raw(f'<path d="M70 98 C64 {top} 176 {top} 170 98" fill="none" stroke="#2B2340" stroke-width="6" stroke-linecap="round"/>')
+    for cx in (68, 172):
+        s.shape('rect', {'x': cx - 11, 'y': 84, 'width': 22, 'height': 32, 'rx': 9}, '#22B8A8', '#16897D', (-3, -3))
+        s.raw(f'<rect x="{cx - 4}" y="92" width="8" height="16" rx="3" fill="#F4F2FF"/>')
+    return s
+
+
+def crown(prefix, who):
+    s = Svg(prefix)
+    y = 24 if who == 'luna' else -22
+    s.shape('path', {'d': f'M92 {y + 26} L88 {y} L104 {y + 12} L120 {y - 6} L136 {y + 12} L152 {y} L148 {y + 26} Z'}, '#FFC233', '#C8901A', (-5, 3))
+    for cx, cy, col in ((104, y + 19, '#E23D3D'), (120, y + 17, '#22B8A8'), (136, y + 19, '#8E6CEF')):
+        s.raw(f'<circle cx="{cx}" cy="{cy}" r="3.2" fill="{col}" stroke="{OUT}" stroke-width="1.8"/>')
+    return s
+
+
+def sunglasses(prefix, who):
+    s = Svg(prefix)
+    for cx in (101, 139):
+        s.shape('rect', {'x': cx - 16, 'y': 85, 'width': 32, 'height': 22, 'rx': 9}, '#15121F')
+        s.raw(f'<path d="M{cx - 9} 90 L{cx - 2} 90" stroke="#6E6A8F" stroke-width="3" stroke-linecap="round"/>')
+    s.raw(f'<path d="M117 92 Q120 89 123 92" stroke="{OUT}" stroke-width="4" fill="none"/>')
+    s.raw(f'<path d="M85 92 L72 88 M155 92 L168 88" stroke="{OUT}" stroke-width="4" stroke-linecap="round"/>')
+    return s
+
+
+def starglasses(prefix, who):
+    import math
+    s = Svg(prefix)
+    for cx in (101, 139):
+        pts = []
+        for i in range(10):
+            r = 19 if i % 2 == 0 else 10
+            a = math.radians(-90 + i * 36)
+            pts.append(f'{cx + r * math.cos(a):.1f} {95 + r * math.sin(a):.1f}')
+        s.raw(f'<path d="M{" L".join(pts)} Z" fill="#FF7AB2" fill-opacity=".38" stroke="#E0569A" stroke-width="4.5" stroke-linejoin="round"/>')
+    s.raw('<path d="M117 93 Q120 90 123 93" stroke="#E0569A" stroke-width="4" fill="none"/>')
+    return s
+
+
+# ---------------------------------------------------------------- Westen
+
+VEST_PANELS = {
+    'luna': ('M92 136 Q102 132 110 132 L104 196 L86 196 Z', 'M148 136 Q138 132 130 132 L136 196 L154 196 Z', 196),
+    'fuzz': ('M88 136 Q100 131 110 131 L106 226 L82 226 Z', 'M152 136 Q140 131 130 131 L134 226 L158 226 Z', 226),
+}
+
+
+def vest(prefix, who, color, shade, studs):
+    s = Svg(prefix)
+    left, right, bottom = VEST_PANELS[who]
+    s.shape('path', {'d': left}, color, shade, (5, -4))
+    s.shape('path', {'d': right}, color, shade, (-5, -4))
+    if studs:
+        for y in range(142, bottom - 6, 12):
+            s.raw(f'<circle cx="{103 - (y - 132) * 0.08:.1f}" cy="{y}" r="1.9" fill="#C9CAD8"/>')
+            s.raw(f'<circle cx="{137 + (y - 132) * 0.08:.1f}" cy="{y}" r="1.9" fill="#C9CAD8"/>')
+    else:
+        s.raw(''.join(f'<rect x="{100 - (y - 132) * 0.08:.1f}" y="{y}" width="1.6" height="5" fill="#F2C94C"/>' for y in range(140, bottom - 6, 9)))
+        s.raw(''.join(f'<rect x="{139 + (y - 132) * 0.08:.1f}" y="{y}" width="1.6" height="5" fill="#F2C94C"/>' for y in range(140, bottom - 6, 9)))
+        s.raw(f'<rect x="139" y="{bottom - 40}" width="10" height="9" rx="1.5" fill="none" stroke="#F2C94C" stroke-width="1.5"/>')
+    return s
+
+
+HEAD_ITEMS = {
+    'hat_beanie': ('hat', beanie),
+    'hat_bandana': ('hat', bandana),
+    'hat_headphones': ('hat', headphones),
+    'hat_crown': ('hat', crown),
+    'glasses_sun': ('glasses', sunglasses),
+    'glasses_star': ('glasses', starglasses),
+}
+BODY_ITEMS = {
+    'vest_leather': ('vest', lambda p, w: vest(p, w, '#2B2340', '#1A1428', True)),
+    'vest_jeans': ('vest', lambda p, w: vest(p, w, '#4A6FD8', '#36539F', False)),
+}
+
+
+# ---------------------------------------------------------------- Zusammensetzen
+
+def transforms(who):
+    neck_y = NECK[who]
+    new_neck = 292 - (292 - neck_y) * BODY_SCALE
+    body_t = f'translate(120 292) scale({BODY_SCALE}) translate(-120 -292)'
+    head_t = f'translate(120 {new_neck}) scale({HEAD_SCALE}) translate(-120 -{neck_y})'
+    return body_t, head_t
+
+
+def template(who):
+    back, body, head = luna_parts() if who == 'luna' else fuzz_parts()
+    body_t, head_t = transforms(who)
     defs = back.defs + body.defs + head.defs
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{vb_left:.1f} {vb_top:.1f} {width:.1f} {height:.1f}"><defs>' + ''.join(defs) + '</defs>'
-            + grp(back.body, head_t, head_scale) + grp(body.body, body_t, body_scale) + grp(head.body, head_t, head_scale) + '</svg>')
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{FULL_BOX}"><defs>' + ''.join(defs) + '<!--defs--></defs>'
+            + f'<g transform="{head_t}">{scaled(back.body, HEAD_SCALE)}</g>'
+            + f'<g transform="{body_t}">{scaled(body.body, BODY_SCALE)}</g>'
+            + f'<g transform="{head_t}">{scaled(head.body, HEAD_SCALE)}</g></svg>')
 
 
-# Gemeinsamer Ausschnitt für beide ganzen Figuren: gleich gross dargestellt,
-# Fuzz' Haarspitzen oben und die Gitarrenköpfe rechts haben Platz.
-FULL_BOX = '22 -20 240 320'
+def items():
+    out = {'guitars': {}, 'luna': {}, 'fuzz': {}}
+    for gid, fn in GUITARS.items():
+        s = fn()
+        out['guitars'][gid] = {'defs': ''.join(s.defs), 'svg': scaled(s.body, BODY_SCALE)}
+    for who in ('luna', 'fuzz'):
+        for iid, (slot, fn) in HEAD_ITEMS.items():
+            s = fn(f'{iid}_{who[0]}_', who)
+            out[who][iid] = {'slot': slot, 'defs': ''.join(s.defs), 'svg': scaled(s.body, HEAD_SCALE)}
+        for iid, (slot, fn) in BODY_ITEMS.items():
+            s = fn(f'{iid}_{who[0]}_', who)
+            out[who][iid] = {'slot': slot, 'defs': ''.join(s.defs), 'svg': scaled(s.body, BODY_SCALE)}
+    return out
 
-# Ausschnitte für die runden Profilbilder (in den Koordinaten der fertigen Figur)
-FACE_BOX = {'luna': '58 24 124 124', 'fuzz': '56 22 128 128'}
+
+def render(who, tpl, its, look=None):
+    """Fertige Figur wie in der App (für Vorschau und Download-Bild)."""
+    look = look or {}
+    colors = dict(DEFAULTS[who])
+    colors.update(look.get('colors', {}))
+    svg = tpl
+    for k, v in colors.items():
+        svg = svg.replace('{{' + k + '}}', v)
+    defs = []
+    g = its['guitars'][look.get('guitar', DEFAULT_GUITAR[who])]
+    defs.append(g['defs'])
+    svg = svg.replace('<!--slot:guitar-->', g['svg'])
+    for slot in ('vest', 'glasses', 'hat'):
+        iid = look.get(slot)
+        if iid:
+            it = its[who][iid]
+            defs.append(it['defs'])
+            svg = svg.replace(f'<!--slot:{slot}-->', it['svg'])
+            if slot == 'hat':
+                svg = re.sub(r'<!--slot:hairclip-->.*?<!--/slot:hairclip-->', '', svg, flags=re.S)
+    return svg.replace('<!--defs-->', ''.join(defs))
 
 
 def main():
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     out = sys.argv[1] if len(sys.argv) > 1 else os.path.join(root, 'assets', 'characters')
-    for name, fn, neck in (('luna', luna_parts, 132), ('fuzz', fuzz_parts, 134)):
-        full = compose(fn(), HEAD_SCALE, BODY_SCALE, neck)
-        full = re.sub(r'viewBox="[^"]+"', f'viewBox="{FULL_BOX}"', full, count=1)
-        open(os.path.join(out, f'{name}.svg'), 'w').write(full)
-        face = re.sub(r'viewBox="[^"]+"', f'viewBox="{FACE_BOX[name]}"', full, count=1)
-        open(os.path.join(out, f'{name}_face.svg'), 'w').write(face)
+    its = items()
+    with open(os.path.join(out, 'items.json'), 'w') as f:
+        json.dump(its, f, ensure_ascii=False, separators=(',', ':'))
+    for who in ('luna', 'fuzz'):
+        tpl = template(who)
+        open(os.path.join(out, f'{who}_template.svg'), 'w').write(tpl)
+        full = render(who, tpl, its)
+        open(os.path.join(out, f'{who}.svg'), 'w').write(full)
+        face = re.sub(r'viewBox="[^"]+"', f'viewBox="{FACE_BOX[who]}"', full, count=1)
+        open(os.path.join(out, f'{who}_face.svg'), 'w').write(face)
+    # Vorschau aller Teile (nur zum Anschauen, nicht für die App)
+    if len(sys.argv) > 2:
+        prev = sys.argv[2]
+        os.makedirs(prev, exist_ok=True)
+        looks = [
+            {}, {'hat': 'hat_beanie', 'glasses': 'glasses_sun', 'vest': 'vest_leather', 'guitar': 'g_pointy_gold'},
+            {'hat': 'hat_headphones', 'vest': 'vest_jeans', 'guitar': 'g_acoustic',
+             'colors': {'hair': '#E8B84A', 'hairS': '#C49530', 'hairL': '#F6D98A', 'skin': '#C68863', 'skinS': '#A66A47', 'shirt': '#E23D3D', 'shirtS': '#B52530'}},
+            {'hat': 'hat_crown', 'glasses': 'glasses_star', 'guitar': 'g_star',
+             'colors': {'hair': '#2F5BD3', 'hairS': '#1F3E99', 'hairL': '#6E93F0', 'skin': '#8D5A3B', 'skinS': '#6E4329', 'eyes': '#2E8B57'}},
+            {'hat': 'hat_bandana', 'guitar': 'g_double_black'},
+        ]
+        for who in ('luna', 'fuzz'):
+            tpl = template(who)
+            for i, lk in enumerate(looks):
+                open(os.path.join(prev, f'{who}_{i}.svg'), 'w').write(render(who, tpl, its, lk))
 
 
 if __name__ == '__main__':

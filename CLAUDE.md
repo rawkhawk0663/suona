@@ -5,7 +5,7 @@ Suona ist ein Spiel, mit dem Kinder und Jugendliche (6 bis etwa 20 Jahre) das No
 Der Bauplan (fünf Pakete) liegt als Artifact „Suona Bauplan“ beim Besitzer. Kurzfassung:
 1. **Erste Töne** (fertig): Notensystem, „Wie heisst die Note?“, Profile, Münzen/Combo/Streak, einfacher Arcade, Lehrerbereich, Lehrpläne, Mikrofon-Test.
 2. **Griffbrett** (fertig): vier Fragearten (`QuestionType`), Griffbrett-Übung auf der Startseite, Arcade mit Spielart, Lehrplan oder Saiten/Bünde, Vorzeichen, „Saite vorgeben“, Vorlagen.
-3. **Abenteuer**: Weltkarte mit 8 Stationen (Kinderzimmer, Garage, Schulaula, Jugendclub, Stadtfest, Tonstudio, Festival, Stadion), Charakter-Editor, Shop, Pedale als Fähigkeiten (Schild-Pedal wehrt einen Fehler ab, Kapodaster hält die Zeit an, Stimmgerät streicht zwei falsche Antworten). Die Töne pro Station kommen aus dem Lehrplan des Profils.
+3. **Abenteuer** (fertig): Weltkarte mit 8 Stationen, je 5 Level + Auftritt, Publikums-Balken, Shop mit Kleidung, Gitarren und Pedalen, freies Aussehen, Abzeichen. Siehe „Abenteuer und Shop“.
 4. **Echt spielen**: Tonerkennung über das Mikrofon (Grundlage `MicListener`/`PitchDetector` ist da).
 5. **Rhythmus, Tabs & Band**.
 
@@ -41,6 +41,14 @@ Der Bauplan (fünf Pakete) liegt als Artifact „Suona Bauplan“ beim Besitzer.
 - `StaffTapArea` (`widgets/staff.dart`) macht das Notensystem antippbar (`stepAt`), `pitchFromStaffStep` rechnet zurück.
 - Arcade (`core/game/arcade_settings.dart`): Spielart `ArcadeAnswer` (Rekord pro Art in `Profile.arcadeBests`, altes Feld `arcadeBest` wird übernommen), Töne nach Lehrplan oder nach Saiten/Bünden, Tempo. Eingebaute Vorlagen ändern nur den Bereich, eigene Vorlagen (alles) speichert die Lehrperson hinter der Sperre (`passTeacherGate`) in `arcade_vorlagen.json`, löschen im Lehrerbereich unter „Lehrpläne“.
 
+## Abenteuer und Shop (Paket 3)
+- **Stationen** (`core/game/adventure.dart`): Kinderzimmer, Garage, Schulaula, Jugendclub, Stadtfest, Tonstudio, Festival, Stadion. Die Lehrplan-Schritte werden gleichmässig verteilt (`stepsOf`, bei 9 Schritten bekommt das Stadion zwei). Eine Station öffnet sich, wenn der Auftritt der vorigen geschafft ist **und** das Profil im Lehrplan mindestens beim ersten Schritt der Station steht (`StationLock.teacher`: neue Töne kommen zuerst im Unterricht, Wunsch des Besitzers: die Lehrperson steuert). Der Lehrerbereich zeigt, worauf ein Kind wartet.
+- **Level** (`Adventure.plan`): 0 Aufwärmen (nur neue Töne, ohne Zeit), 1 Probe (Notenname), 2 Griffbrett, 3 Welcher Ton?, 4 Generalprobe (gemischt), 5 Auftritt (15 Töne, gemischt). Zeit pro Ton 12 s in der ersten bis 5 s in der letzten Station (`timeFor`). Sterne strenger als beim Üben (60/75/90 %). Erstes Schaffen gibt 15 Münzen, ein Auftritt 50. Das beste Ergebnis zählt. Gespeichert in `Profile.adventure[curriculumId]` (8 × 6 Sterne).
+- **Publikum**: Stimmung startet bei 0.6, richtig +0.08, falsch −(0.14 + 0.01 × Station, Auftritt +0.04). Bei 0 ist das Level vorbei.
+- **Pedale** (nur im Abenteuer, je einmal pro Level): Schild-Pedal (der nächste Fehler zählt nicht), Kapodaster (Zeit für einen Ton anhalten, nur mit Zeitdruck), Stimmgerät (streicht zwei falsche Namen oder zeigt die Saite, nicht bei „Note setzen“).
+- **Shop** (`core/game/shop.dart`, `features/shop/shop_screen.dart`): Kopf (Bandana, Mütze, Kopfhörer, Krone), Brillen, Westen, Gitarren (zwei Grundgitarren gratis), Pedale. Nur Spiel-Münzen, keine Käufe mit Geld. Anprobieren vor dem Kauf, Kauf muss einmal bestätigt werden (gegen Versehen). Farben (Haut, Haare, Augen, Shirt) sind gratis.
+- **Abzeichen** (`core/game/badges.dart`): werden aus dem Spielstand berechnet, nicht gespeichert.
+
 ## Lehrpläne
 - `Curriculum` = Schritte mit **neuen** Tönen. Eingebaut: guitarTALKS (Markus Engler), nur die Reihenfolge der Töne, keine Stücke oder Figuren aus dem Buch (Urheberrecht). Eigene Lehrpläne legt die Lehrperson an (`curriculum_editor.dart`), z. B. „Play Guitar Junior“ (macht der Besitzer selbst).
 - Jedes Profil hat `curriculumId` und `step` (wie weit das Kind ist, setzt die Lehrperson). Üben nimmt alle Töne bis `step`, die neuen Töne des aktuellen Schritts kommen doppelt so oft.
@@ -54,7 +62,7 @@ Der Bauplan (fünf Pakete) liegt als Artifact „Suona Bauplan“ beim Besitzer.
 
 ## Daten
 Alles im Datenordner der App (`getApplicationSupportDirectory`, unter Windows `%APPDATA%\Suona\Suona`):
-- `Spielstaende/<id>.json` (Format `suona-profil` v1)
+- `Spielstaende/<id>.json` (Format `suona-profil` v1, mit `look`, `owned`, `adventure`)
 - `Lehrplaene/<id>.json` (Format `suona-lehrplan` v1)
 - `einstellungen.json`, `arcade_vorlagen.json`, `fehler.log`, `update.log`
 Geschrieben wird immer über eine Zwischendatei (`json_files.dart`).
@@ -65,11 +73,13 @@ lib/
   app/         l10n, Theme (Bühnen-Farben, Schriften Baloo 2 + Atkinson Hyperlegible), Updater, Fehlerprotokoll, Version
   core/
     music/     Pitch, Notennamen, Gitarre, Lehrpläne
-    game/      Lernkartei, Münzen/Combo/Sterne, Tages-Streak
+    game/      Lernkartei, Münzen/Combo/Sterne, Tages-Streak, Fragen, Arcade, Abenteuer, Shop, Abzeichen
+    character/ Aussehen (CharacterLook, Farbpaletten), Figuren zusammensetzen (CharacterArt)
     profiles/  Profil, JSON-Dateien
     audio/     Klänge, Tonerkennung, Mikrofon
     suona_state.dart  Zustand der App (SuonaScope)
-  features/    start (Wer spielt?), home, quiz (Üben + Arcade, Ergebnis), arcade (Einstellungen), teacher (Lehrerbereich)
+  features/    start (Wer spielt?), home (mit Abzeichen), quiz (Üben, Arcade, Abenteuer-Level, Ergebnis), arcade (Einstellungen),
+               adventure (Weltkarte, Station), shop (Shop und Aussehen), teacher (Lehrerbereich)
   widgets/     Bühne, Figuren, Münzen, Notensystem, Griffbrett
 assets/characters/  Luna und Fuzz als SVG (ganz und nur Gesicht), erzeugt mit tool/make_characters.py.
 tool/make_characters.py  zeichnet die Figuren (siehe „Figuren“)
@@ -77,12 +87,13 @@ tool/make_icon.py   erzeugt das App-Symbol (Windows .ico, Android)
 ```
 
 ## Figuren
-- Stil „Mix 2“ (vom Besitzer gewählt, aus einem Vergleich von vier Stilen): grosse, glänzende Chibi-Augen und Bäckchen, dazu dicke dunkle Konturen (`#15121F`), harte Schatten als Sichel und Rock-Details. Luna: lange violette Haare, Stern im Haar und auf dem Shirt, korallroter Rock, Ringelstrumpfhose, Stiefel, türkise spitze Gitarre. Fuzz: oben stachlige Haare mit kurzen Seiten, türkises Shirt mit Blitz, Jeans mit Riss, Turnschuhe, schwarzes Schweissband, rote Gitarre.
-- Nicht von Hand in den SVGs ändern, sondern in `tool/make_characters.py` und neu erzeugen (`python3 tool/make_characters.py`). Kopf und Körper sind getrennte Gruppen (`HEAD_SCALE` 1.16, `BODY_SCALE` 0.95), die Konturen bleiben trotzdem gleich dick.
+- Stil „Mix 2“ (vom Besitzer gewählt, aus einem Vergleich von vier Stilen): grosse, glänzende Chibi-Augen und Bäckchen, dazu dicke dunkle Konturen (`#15121F`), harte Schatten als Sichel und Rock-Details. Luna: lange Haare, Stern im Haar (verschwindet unter Kopfbedeckungen) und auf dem Shirt, korallroter Rock, Ringelstrumpfhose, Stiefel, türkise Pfeil-Gitarre. Fuzz: oben stachlige Haare mit kurzen Seiten, Shirt mit Blitz, Jeans mit Riss, Turnschuhe, schwarzes Schweissband, rote Rock-Gitarre.
+- **Baukasten:** `tool/make_characters.py` erzeugt `assets/characters/<figur>_template.svg` (Farben als Platzhalter `{{skin}}`, `{{hair}}` …, Stellen `<!--slot:guitar|vest|glasses|hat-->`, `<!--defs-->`) und `items.json` (Gitarren für beide, übrige Teile pro Figur). `CharacterArt` (`core/character/character_art.dart`) setzt zur Laufzeit zusammen, `CharacterLook` (`core/character/look.dart`) hält Farben und Teile. `luna.svg`/`fuzz.svg` sind nur Vorschau und Download-Bild.
+- Nie von Hand in den SVGs ändern, sondern im Python-Programm und neu erzeugen (`python3 tool/make_characters.py`). Ein neues Shop-Teil: im Programm zeichnen (für beide Figuren), in `Shop.items` mit Preis und Namen eintragen. Der Test prüft, dass jedes Shop-Teil für beide Figuren existiert.
+- Kopf und Körper sind getrennte Gruppen (`HEAD_SCALE` 1.16, `BODY_SCALE` 0.95), die Konturen bleiben trotzdem gleich dick (auch bei den Teilen).
 - Der Anschlagarm liegt vor der Gitarre, der Greifarm hinter dem Hals (Wunsch des Besitzers).
 - Keine Strichelung (`stroke-dasharray`) verwenden, `flutter_svg` kennt sie nicht. Schatten über `clipPath` funktionieren.
-- Für den Shop (Paket 3): Mix 2 wurde gewählt, weil der Körper Platz für Kleidung hat und beide Figuren fast gleich gebaut sind, so passen viele Teile beiden. Shop-Teile werden als Ebenen ergänzt (Körper, Schuhe, Hose/Rock, Oberteil, Jacke, Kopf, Frisur, Kopfbedeckung, Brille, Gitarre).
-- Das Bild `bilder/luna_und_fuzz.png` im Download-Projekt bei Änderungen an den Figuren neu erzeugen.
+- Das Bild `bilder/luna_und_fuzz.png` im Download-Projekt bei Änderungen an den Grundfiguren neu erzeugen.
 
 ## Technik
 - Flutter `3.47.9` (in `.github/workflows/build.yml`), Material 3. Hauptgerät: Microsoft Surface (Windows), danach Android, später evtl. iPad.

@@ -5,7 +5,11 @@ import '../../app/theme.dart';
 import '../../core/profiles/profile.dart';
 import '../../core/suona_state.dart';
 import '../../widgets/stage.dart';
+import '../../core/game/badges.dart';
+import '../adventure/adventure_map_screen.dart';
 import '../arcade/arcade_setup_screen.dart';
+import '../shop/shop_screen.dart';
+import 'badges_dialog.dart';
 import '../quiz/quiz_screen.dart';
 
 /// Das Zuhause eines Profils: Figur auf der Bühne und die Spielarten.
@@ -80,28 +84,34 @@ class HomeScreen extends StatelessWidget {
                   .push(MaterialPageRoute<void>(builder: (_) => ArcadeSetupScreen(profileId: profile.id))),
         ),
         const SizedBox(height: 14),
-        Row(
-          children: [
-            Expanded(
-              child: StageTile(
-                title: tr('Abenteuer', 'Adventure'),
-                subtitle: tr('Kommt bald', 'Coming soon'),
-                icon: Icons.map_rounded,
-                color: SuonaColors.coral,
-                locked: true,
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: StageTile(
+                  title: tr('Abenteuer', 'Adventure'),
+                  subtitle: tr('Bis ins Stadion', 'To the stadium'),
+                  icon: Icons.map_rounded,
+                  color: SuonaColors.coral,
+                  onTap: () =>
+                      Navigator.of(context)
+                          .push(MaterialPageRoute<void>(builder: (_) => AdventureMapScreen(profileId: profile.id))),
+                ),
               ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: StageTile(
-                title: 'Shop',
-                subtitle: tr('Kommt bald', 'Coming soon'),
-                icon: Icons.storefront_rounded,
-                color: SuonaColors.coral,
-                locked: true,
+              const SizedBox(width: 14),
+              Expanded(
+                child: StageTile(
+                  title: 'Shop',
+                  subtitle: tr('Outfits und Gitarren', 'Outfits and guitars'),
+                  icon: Icons.storefront_rounded,
+                  color: SuonaColors.coral,
+                  onTap: () => Navigator.of(context)
+                      .push(MaterialPageRoute<void>(builder: (_) => ShopScreen(profileId: profile.id, startTab: 1))),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );
@@ -114,7 +124,46 @@ class HomeScreen extends StatelessWidget {
               : tr('Bereit für die Bühne?', 'Ready for the stage?'),
         ),
         const SizedBox(height: 8),
-        Expanded(child: CharacterView(profile.character)),
+        Expanded(
+          child: GestureDetector(
+            // Figur antippen: Aussehen ändern.
+            onTap: () =>
+                Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => ShopScreen(profileId: profile.id))),
+            child: CharacterView(profile.look),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 10,
+          alignment: WrapAlignment.center,
+          children: [
+            ActionChip(
+              avatar: const Icon(Icons.palette_rounded, color: SuonaColors.spot),
+              label: Text(
+                tr('Aussehen', 'Looks'),
+                style: display(17, color: SuonaColors.onStage, weight: FontWeight.w700),
+              ),
+              backgroundColor: SuonaColors.stageFloor,
+              side: const BorderSide(color: SuonaColors.stageLine),
+              onPressed: () =>
+                  Navigator.of(context)
+                      .push(MaterialPageRoute<void>(builder: (_) => ShopScreen(profileId: profile.id))),
+            ),
+            ActionChip(
+              avatar: const Icon(Icons.military_tech_rounded, color: SuonaColors.spot),
+              label: Text(
+                tr(
+                  'Abzeichen ${badgesOf(profile).where((b) => b.earned).length}',
+                  'Badges ${badgesOf(profile).where((b) => b.earned).length}',
+                ),
+                style: display(17, color: SuonaColors.onStage, weight: FontWeight.w700),
+              ),
+              backgroundColor: SuonaColors.stageFloor,
+              side: const BorderSide(color: SuonaColors.stageLine),
+              onPressed: () => showBadges(context, profile),
+            ),
+          ],
+        ),
       ],
     );
 
@@ -183,7 +232,7 @@ class _TopBar extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(),
         ),
         const SizedBox(width: 12),
-        FaceBadge(profile.character, size: 52),
+        FaceBadge(profile.look, size: 52),
         const SizedBox(width: 10),
         Expanded(
           child: Text(

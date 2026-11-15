@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/l10n.dart';
 import '../../app/theme.dart';
-import '../../core/profiles/profile.dart';
+import '../../core/character/look.dart';
 import '../../core/suona_state.dart';
 import '../../widgets/stage.dart';
 
@@ -158,7 +158,7 @@ class _CharacterChoice extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(10, 16, 10, 12),
             child: Column(
               children: [
-                SizedBox(height: 230, child: CharacterView(character)),
+                SizedBox(height: 230, child: CharacterView(CharacterLook.defaults(character))),
                 const SizedBox(height: 6),
                 Text(character.displayName, style: display(30, color: SuonaColors.spot)),
               ],

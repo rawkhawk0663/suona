@@ -12,6 +12,7 @@ import 'app/l10n.dart';
 import 'app/theme.dart';
 import 'app/updater.dart';
 import 'core/audio/sounds.dart';
+import 'core/character/character_art.dart';
 import 'core/suona_state.dart';
 import 'features/start/start_screen.dart';
 
@@ -22,6 +23,8 @@ Future<void> main() async {
   ErrorLog.install(support);
   _registerFontLicenses();
   await _prepareWindow();
+  // Vorlagen und Shop-Teile der Figuren laden (für das eigene Aussehen).
+  await CharacterArt.load();
   final state = SuonaState(support);
   await state.load();
   Sounds.instance.enabled = state.settings.sound;

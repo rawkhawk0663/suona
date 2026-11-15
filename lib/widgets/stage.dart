@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../app/theme.dart';
-import '../core/profiles/profile.dart';
+import '../core/character/character_art.dart';
+import '../core/character/look.dart';
 
 /// Bühnen-Hintergrund: dunkles Blau, zwei Scheinwerfer, Bühnenboden.
 class StageBackground extends StatelessWidget {
@@ -81,22 +82,27 @@ class _StagePainter extends CustomPainter {
   bool shouldRepaint(_StagePainter old) => old.floor != floor;
 }
 
-/// Luna oder Fuzz, ganz oder nur das Gesicht.
+/// Luna oder Fuzz mit eigenem Aussehen, ganz oder nur das Gesicht.
 class CharacterView extends StatelessWidget {
-  const CharacterView(this.character, {super.key, this.face = false, this.size});
+  const CharacterView(this.look, {super.key, this.face = false, this.bust = false, this.size});
 
-  final Character character;
+  final CharacterLook look;
   final bool face;
+
+  /// Kopf mit Platz für Kopfbedeckungen (Shop).
+  final bool bust;
   final double? size;
 
   @override
   Widget build(BuildContext context) {
-    Widget picture(double? w, double? h) => SvgPicture.asset(
-      face ? character.faceAsset : character.asset,
+    final svg = CharacterArt.instance.svg(look, face: face, bust: bust);
+    Widget picture(double? w, double? h) => SvgPicture.string(
+      svg,
+      key: ValueKey(look.key),
       width: w,
       height: h,
       fit: BoxFit.contain,
-      semanticsLabel: character.displayName,
+      semanticsLabel: look.character.displayName,
     );
     if (size != null) return picture(size, size);
     // Ohne feste Grösse: den verfügbaren Platz füllen (sofern begrenzt).
@@ -108,9 +114,9 @@ class CharacterView extends StatelessWidget {
 
 /// Rundes Gesicht in einem Kreis (Profil-Auswahl, Kopfzeile).
 class FaceBadge extends StatelessWidget {
-  const FaceBadge(this.character, {super.key, this.size = 56, this.ring = SuonaColors.spot});
+  const FaceBadge(this.look, {super.key, this.size = 56, this.ring = SuonaColors.spot});
 
-  final Character character;
+  final CharacterLook look;
   final double size;
   final Color ring;
 
@@ -127,7 +133,7 @@ class FaceBadge extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: Padding(
         padding: EdgeInsets.only(top: size * 0.06),
-        child: CharacterView(character, face: true),
+        child: CharacterView(look, face: true),
       ),
     );
   }

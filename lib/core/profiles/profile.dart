@@ -1,16 +1,9 @@
+import '../character/look.dart';
+
+export '../character/look.dart' show Character, CharacterLook;
 import '../game/note_stats.dart';
 import '../game/rewards.dart';
 import '../music/curriculum.dart';
-
-/// Grundfigur eines Profils.
-enum Character {
-  luna,
-  fuzz;
-
-  String get asset => 'assets/characters/$name.svg';
-  String get faceAsset => 'assets/characters/${name}_face.svg';
-  String get displayName => name == 'luna' ? 'Luna' : 'Fuzz';
-}
 
 /// Ein Spielprofil. Bewusst ohne echten Namen, Alter oder Foto:
 /// nur Spitzname und Figur (Kinderschutz).
@@ -28,8 +21,14 @@ class Profile {
     Map<String, int>? arcadeBests,
     this.totalCorrect = 0,
     this.roundsPlayed = 0,
+    CharacterLook? look,
+    Set<String>? owned,
+    Map<String, List<List<int>>>? adventure,
     DateTime? created,
-  }) : streak = streak ?? DailyStreak(),
+  }) : _look = look, // ignore: prefer_initializing_formals
+       owned = owned ?? {},
+       adventure = adventure ?? {},
+       streak = streak ?? DailyStreak(),
        stats = stats ?? NoteStats(),
        arcadeBests = (arcadeBests == null || arcadeBests.isEmpty)
            ? {if (arcadeBest > 0) 'name': arcadeBest}
@@ -58,6 +57,22 @@ class Profile {
   int roundsPlayed;
   final DateTime created;
 
+  /// Gekaufte Shop-Teile (IDs wie `hat_beanie`, `g_star`, `pedal_shield`).
+  final Set<String> owned;
+
+  /// Sterne im Abenteuer pro Lehrplan: 8 Stationen × 6 Level, 0 = noch nicht geschafft.
+  final Map<String, List<List<int>>> adventure;
+
+  CharacterLook? _look;
+
+  /// Aussehen. Passt es nicht zur Figur (Figur gewechselt), gilt der Grund-Look.
+  CharacterLook get look {
+    final l = _look;
+    return l != null && l.character == character ? l : CharacterLook.defaults(character);
+  }
+
+  set look(CharacterLook value) => _look = value;
+
   Map<String, dynamic> toJson() => {
     'format': 'suona-profil',
     'version': 1,
@@ -72,6 +87,9 @@ class Profile {
     'arcadeBests': arcadeBests,
     'totalCorrect': totalCorrect,
     'roundsPlayed': roundsPlayed,
+    'look': look.toJson(),
+    'owned': owned.toList()..sort(),
+    'adventure': adventure,
     'created': created.toIso8601String(),
   };
 
@@ -91,6 +109,19 @@ class Profile {
     },
     totalCorrect: (j['totalCorrect'] as num?)?.toInt() ?? 0,
     roundsPlayed: (j['roundsPlayed'] as num?)?.toInt() ?? 0,
+    look: j['look'] is Map<String, dynamic>
+        ? CharacterLook.fromJson(
+            j['look'] as Map<String, dynamic>,
+            Character.values.asNameMap()[j['character']] ?? Character.luna,
+          )
+        : null,
+    owned: {for (final x in (j['owned'] as List<dynamic>? ?? const [])) x.toString()},
+    adventure: {
+      for (final e in ((j['adventure'] as Map<String, dynamic>?) ?? const {}).entries)
+        e.key: [
+          for (final st in (e.value as List<dynamic>)) [for (final v in (st as List<dynamic>)) (v as num).toInt()],
+        ],
+    },
     created: DateTime.tryParse(j['created'] as String? ?? ''),
   );
 }
