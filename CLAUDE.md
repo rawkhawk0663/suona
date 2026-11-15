@@ -97,7 +97,7 @@ tool/make_icon.py   erzeugt das App-Symbol (Windows .ico, Android)
 
 ## Technik
 - Flutter `3.47.9` (in `.github/workflows/build.yml`), Material 3. Hauptgerät: Microsoft Surface (Windows), danach Android, später evtl. iPad.
-- Jeder Push auf `main` baut Windows (ZIP + `Suona-Setup.exe`) und Android (`Suona-Android.apk`) und legt sie als Release ab, zusätzlich im öffentlichen Projekt `rawkhawk0663/suona-releases` (Geheimnis `RELEASES_TOKEN`, ohne Geheimnis übersprungen). Von dort holt „Nach Updates suchen“ die neue Version (Ablauf wie Volti, siehe dort Punkt 33).
+- Jeder Push auf `main` baut Windows (ZIP + `Suona-Setup.exe`) und Android (`Suona-Android.apk`) und legt sie als Release ab, zusätzlich im öffentlichen Projekt `rawkhawk0663/suona-releases` (Geheimnis `RELEASES_TOKEN`, ohne Geheimnis übersprungen). Von dort holt „Nach Updates suchen“ die neue Version (Ablauf wie Volti, siehe dort Punkt 33). Die Builds laden ihre Dateien direkt in einen Release-Entwurf (Job `draft`), der am Schluss veröffentlicht wird. Keine `upload-artifact`-Schritte: Der Speicher dafür ist im Konto voll (mit Volti geteilt).
 - Versionsnummer `v0.1.<run_number>` über `--dart-define=SUONA_VERSION`.
 - Bedienung vollständig mit Finger möglich. Tastatur geht zusätzlich (Tasten c d e f g a h, `#` und `-` für die Vorzeichen).
 
