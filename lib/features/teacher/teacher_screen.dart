@@ -6,6 +6,7 @@ import '../../app/l10n.dart';
 import '../../app/theme.dart';
 import '../../app/version.dart';
 import '../../core/game/adventure.dart';
+import '../../core/game/difficulty.dart';
 import '../../core/game/question.dart';
 import '../../core/music/curriculum.dart';
 import '../../core/music/note_names.dart';
@@ -152,7 +153,24 @@ class _ProfileCard extends StatelessWidget {
                     state.saveProfile(profile);
                   },
                 ),
+                _LabeledDropdown<Difficulty>(
+                  label: tr('Stufe', 'Level'),
+                  value: profile.difficulty,
+                  items: {for (final d in Difficulty.values) d: d.label},
+                  onChanged: (d) {
+                    profile.difficulty = d;
+                    state.saveProfile(profile);
+                  },
+                ),
               ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              tr(
+                'Stufe im Abenteuer: ${profile.difficulty.help} Gespeichert wird nur die Stufe, nicht das Alter.',
+                'Adventure level: ${profile.difficulty.help} Only the level is stored, not the age.',
+              ),
+              style: const TextStyle(color: SuonaColors.inkMuted),
             ),
             const SizedBox(height: 14),
             _AdventureLine(profile: profile, curriculum: curriculum),

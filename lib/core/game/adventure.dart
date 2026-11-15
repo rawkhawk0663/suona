@@ -6,6 +6,7 @@ import '../music/note_names.dart';
 import '../music/pitch.dart';
 import '../profiles/profile.dart';
 import '../suona_state.dart';
+import 'difficulty.dart';
 import 'question.dart';
 
 /// Ein Level im Abenteuer, fertig zum Spielen.
@@ -19,6 +20,7 @@ class LevelPlan {
     required this.length,
     required this.timeLimit,
     required this.crowdLoss,
+    required this.crowdGain,
   });
 
   final int station;
@@ -31,6 +33,9 @@ class LevelPlan {
 
   /// Wie viel Stimmung ein Fehler kostet.
   final double crowdLoss;
+
+  /// Wie viel Stimmung ein richtiger Ton bringt.
+  final double crowdGain;
 
   bool get isConcert => level == Adventure.concertLevel;
 }
@@ -49,9 +54,8 @@ class Adventure {
   static const levelsPerStation = 6;
   static const concertLevel = 5;
 
-  /// Stimmung des Publikums am Anfang und pro richtigem Ton.
+  /// Stimmung des Publikums am Anfang.
   static const crowdStart = 0.6;
-  static const crowdGain = 0.08;
 
   static String stationName(int s) => switch (s) {
     0 => tr('Kinderzimmer', 'Bedroom'),
@@ -135,20 +139,35 @@ class Adventure {
   /// Zusatzmünzen beim ersten Schaffen: Auftritte geben mehr.
   static int firstClearBonus(int level) => level == concertLevel ? 50 : 15;
 
-  /// Sekunden pro Ton: wird mit jeder Station knapper (12 s bis 5 s).
-  static Duration? timeFor(int station, int level) {
+  /// Sekunden pro Ton: wird mit jeder Station knapper (Grundzeit 12 s bis
+  /// 5 s), angepasst an die Stufe. Die Jüngsten haben länger ganz ohne Zeit.
+  static Duration? timeFor(int station, int level, [Difficulty d = Difficulty.teen]) {
     final secs = 12 - station;
-    final s = switch (level) {
+    final base = switch (level) {
       0 => null,
-      1 => station < 2 ? null : secs,
-      2 || 3 => station < 1 ? null : secs + 2,
+      1 => station < d.untimedRehearsal ? null : secs,
+      2 || 3 => station < d.untimedFretboard ? null : secs + 2,
       4 => secs,
       _ => max(4, secs - 1),
     };
-    return s == null ? null : Duration(seconds: s);
+    if (base == null) return null;
+    return Duration(seconds: max(3, (base * d.timeFactor).round()));
   }
 
-  static LevelPlan plan(Curriculum c, AccidentalStyle style, int station, int level) {
+  /// Wie viele Töne ein Level hat.
+  static int lengthOf(int level, [Difficulty d = Difficulty.teen]) => switch (level) {
+    0 => d.shorter ? 6 : 8,
+    concertLevel => d.shorter ? 12 : 15,
+    _ => d.shorter ? 8 : 10,
+  };
+
+  static LevelPlan plan(
+    Curriculum c,
+    AccidentalStyle style,
+    int station,
+    int level, [
+    Difficulty d = Difficulty.teen,
+  ]) {
     final (from, to) = stepsOf(station, c.steps.length);
     final fresh = <Pitch>{for (var i = from; i <= to; i++) ...c.steps[i].notes};
     final freshStyled = applyAccidentalStyle(fresh.toList(), style);
@@ -167,10 +186,12 @@ class Adventure {
       pool: pool,
       focus: freshStyled.toSet(),
       types: types,
-      length: level == concertLevel ? 15 : (level == 0 ? 8 : 10),
-      timeLimit: timeFor(station, level),
-      // Am Anfang verzeiht das Publikum mehr, später weniger.
-      crowdLoss: 0.14 + station * 0.01 + (level == concertLevel ? 0.04 : 0),
+      length: lengthOf(level, d),
+      timeLimit: timeFor(station, level, d),
+      // Am Anfang verzeiht das Publikum mehr, später weniger. Die Stufe
+      // macht es geduldiger oder strenger.
+      crowdLoss: (0.14 + station * 0.01 + (level == concertLevel ? 0.04 : 0)) * d.lossFactor,
+      crowdGain: d.gain,
     );
   }
 }

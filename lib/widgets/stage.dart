@@ -84,18 +84,21 @@ class _StagePainter extends CustomPainter {
 
 /// Luna oder Fuzz mit eigenem Aussehen, ganz oder nur das Gesicht.
 class CharacterView extends StatelessWidget {
-  const CharacterView(this.look, {super.key, this.face = false, this.bust = false, this.size});
+  const CharacterView(this.look, {super.key, this.face = false, this.bust = false, this.guitar = false, this.size});
 
   final CharacterLook look;
   final bool face;
 
   /// Kopf mit Platz für Kopfbedeckungen (Shop).
   final bool bust;
+
+  /// Nur Oberkörper mit Gitarre (Auswahl der Startgitarre, Gitarren im Shop).
+  final bool guitar;
   final double? size;
 
   @override
   Widget build(BuildContext context) {
-    final svg = CharacterArt.instance.svg(look, face: face, bust: bust);
+    final svg = CharacterArt.instance.svg(look, face: face, bust: bust, guitar: guitar);
     Widget picture(double? w, double? h) => SvgPicture.string(
       svg,
       key: ValueKey(look.key),

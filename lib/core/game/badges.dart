@@ -1,6 +1,7 @@
 import '../../app/l10n.dart';
 import '../profiles/profile.dart';
 import 'adventure.dart';
+import 'shop.dart';
 
 /// Ein Abzeichen. Wird aus dem Spielstand berechnet, nicht gespeichert.
 class Badge {
@@ -65,6 +66,13 @@ List<Badge> badgesOf(Profile p) {
           'Played the concert at “${Adventure.stationName(s)}”',
         ),
         stationDone(s),
+      ),
+    for (final set in Shop.sets)
+      Badge(
+        'set_${set.id}',
+        tr('Set ${set.name}', '${set.name} set'),
+        tr('Alle Teile vom Set „${set.name}“ gesammelt', 'Collected every part of the “${set.name}” set'),
+        set.completeFor(p),
       ),
   ];
 }

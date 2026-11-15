@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../app/l10n.dart';
 import '../../app/theme.dart';
 import '../../core/audio/sounds.dart';
+import '../../core/character/character_art.dart';
 import '../../core/character/look.dart';
 import '../../core/game/shop.dart';
 import '../../core/profiles/profile.dart';
@@ -26,6 +27,9 @@ class _ShopScreenState extends State<ShopScreen> {
   /// Anprobiertes, noch nicht gekauftes Teil (nur Vorschau).
   ShopItem? _trying;
 
+  /// Anprobiertes Set (alle Teile auf einmal, nur Vorschau).
+  OutfitSet? _tryingSet;
+
   /// Kauf muss einmal bestätigt werden (gegen Versehen).
   String? _confirming;
   Timer? _confirmTimer;
@@ -39,14 +43,29 @@ class _ShopScreenState extends State<ShopScreen> {
   Profile _profile(SuonaState s) => s.profiles.firstWhere((p) => p.id == widget.profileId);
 
   CharacterLook _preview(Profile p) {
+    final set = _tryingSet;
+    if (set != null) return withElectric(Shop.wearSet(p, set, all: true));
     final t = _trying;
     if (t == null || t.slot == ShopSlot.pedal) return p.look;
-    return p.look.wear(t.slot.name, t.id);
+    final look = p.look.wear(t.slot.name, t.id);
+    return t.slot == ShopSlot.amp ? withElectric(look) : look;
   }
 
   Future<void> _wear(SuonaState state, Profile p, ShopItem item, {bool off = false}) async {
-    setState(() => _trying = null);
+    setState(() {
+      _trying = null;
+      _tryingSet = null;
+    });
     p.look = p.look.wear(item.slot.name, off ? null : item.id);
+    await state.saveProfile(p);
+  }
+
+  Future<void> _wearSet(SuonaState state, Profile p, OutfitSet set) async {
+    setState(() {
+      _trying = null;
+      _tryingSet = null;
+    });
+    p.look = Shop.wearSet(p, set);
     await state.saveProfile(p);
   }
 
@@ -63,15 +82,22 @@ class _ShopScreenState extends State<ShopScreen> {
     if (!Shop.buy(p, item)) return;
     unawaited(Sounds.instance.coins());
     setState(() => _confirming = null);
-    if (item.slot != ShopSlot.pedal) {
+    if (item.slot != ShopSlot.pedal && _tryingSet == null) {
       await _wear(state, p, item);
     } else {
       await state.saveProfile(p);
     }
     if (!mounted) return;
+    final set = Shop.setOf(item.id);
+    final done = set != null && set.completeFor(p);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(tr('${item.name} gehört jetzt dir!', '${item.name} is yours now!'), style: display(20)),
+        content: Text(
+          done
+              ? tr('Set „${set.name}“ komplett! Neues Abzeichen!', '“${set.name}” set complete! New badge!')
+              : tr('${item.name} gehört jetzt dir!', '${item.name} is yours now!'),
+          style: display(20),
+        ),
         backgroundColor: SuonaColors.ok,
         duration: const Duration(seconds: 2),
       ),
@@ -84,14 +110,17 @@ class _ShopScreenState extends State<ShopScreen> {
     final p = _profile(state);
     final tabs = [
       (tr('Aussehen', 'Looks'), Icons.palette_rounded),
+      (tr('Sets', 'Sets'), Icons.collections_rounded),
       for (final s in ShopSlot.values)
         (
           s.label,
           switch (s) {
             ShopSlot.hat => Icons.face_retouching_natural_rounded,
             ShopSlot.glasses => Icons.visibility_rounded,
+            ShopSlot.neck => Icons.diamond_rounded,
             ShopSlot.vest => Icons.checkroom_rounded,
             ShopSlot.guitar => Icons.music_note_rounded,
+            ShopSlot.amp => Icons.speaker_rounded,
             ShopSlot.pedal => Icons.bolt_rounded,
           },
         ),
@@ -100,9 +129,12 @@ class _ShopScreenState extends State<ShopScreen> {
       children: [
         Expanded(child: CharacterView(_preview(p))),
         const SizedBox(height: 8),
-        if (_trying != null && _trying!.slot != ShopSlot.pedal)
+        if (_tryingSet != null || (_trying != null && _trying!.slot != ShopSlot.pedal))
           Text(
-            tr('Du probierst: ${_trying!.name}', 'Trying on: ${_trying!.name}'),
+            _tryingSet != null
+                ? tr('Du probierst: Set ${_tryingSet!.name}', 'Trying on: ${_tryingSet!.name} set')
+                : tr('Du probierst: ${_trying!.name}', 'Trying on: ${_trying!.name}'),
+            textAlign: TextAlign.center,
             style: display(20, color: SuonaColors.spot, weight: FontWeight.w700),
           ),
       ],
@@ -148,7 +180,10 @@ class _ShopScreenState extends State<ShopScreen> {
                               ),
                               indicatorSize: TabBarIndicatorSize.tab,
                               dividerColor: Colors.transparent,
-                              onTap: (_) => setState(() => _trying = null),
+                              onTap: (_) => setState(() {
+                                _trying = null;
+                                _tryingSet = null;
+                              }),
                               tabs: [
                                 for (final (label, icon) in tabs)
                                   Tab(
@@ -174,6 +209,7 @@ class _ShopScreenState extends State<ShopScreen> {
                                       await state.saveProfile(p);
                                     },
                                   ),
+                                  _setsList(state, p),
                                   for (final s in ShopSlot.values) _itemsGrid(state, p, s),
                                 ],
                               ),
@@ -211,7 +247,8 @@ class _ShopScreenState extends State<ShopScreen> {
 
   Widget _itemsGrid(SuonaState state, Profile p, ShopSlot slot) {
     final items = Shop.inSlot(slot);
-    return GridView.builder(
+    final ampHint = slot == ShopSlot.amp && CharacterArt.instance.isAcoustic(p.look.guitar);
+    final grid = GridView.builder(
       padding: const EdgeInsets.only(bottom: 20),
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 230,
@@ -225,22 +262,229 @@ class _ShopScreenState extends State<ShopScreen> {
         final owned = Shop.owns(p, item);
         final wearing = slot != ShopSlot.pedal && p.look.itemIn(slot.name) == item.id;
         final trying = _trying?.id == item.id;
+        final look = slot == ShopSlot.pedal ? null : p.look.wear(slot.name, item.id);
         return _ItemCard(
           item: item,
-          look: slot == ShopSlot.pedal ? null : p.look.wear(slot.name, item.id),
+          look: slot == ShopSlot.amp ? withElectric(look!) : look,
           face: slot == ShopSlot.hat || slot == ShopSlot.glasses,
+          guitarView: slot == ShopSlot.guitar,
           owned: owned,
           wearing: wearing,
           trying: trying,
           confirming: _confirming == item.id,
           canAfford: p.coins >= item.price,
           missing: item.price - p.coins,
-          onTap: () => setState(() => _trying = trying ? null : item),
+          onTap: () => setState(() {
+            _tryingSet = null;
+            _trying = trying ? null : item;
+          }),
           onBuy: () => _buy(state, p, item),
           onWear: () => _wear(state, p, item),
-          onTakeOff: slot == ShopSlot.guitar ? null : () => _wear(state, p, item, off: true),
+          onTakeOff: slot.removable ? () => _wear(state, p, item, off: true) : null,
         );
       },
+    );
+    if (!ampHint) return grid;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _Hint(
+          tr(
+            'Du spielst gerade eine akustische Gitarre. Ein Amp steht nur bei E-Gitarren neben dir.',
+            'You’re playing an acoustic guitar right now. An amp only shows up with an electric guitar.',
+          ),
+        ),
+        const SizedBox(height: 10),
+        Expanded(child: grid),
+      ],
+    );
+  }
+
+  /// Sets zum Sammeln: Vorschau, Fortschritt und die einzelnen Teile.
+  Widget _setsList(SuonaState state, Profile p) {
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 20, right: 6),
+      children: [
+        Text(
+          tr(
+            'Sammle alle Teile eines Sets und bekomme ein Abzeichen!',
+            'Collect every part of a set and earn a badge!',
+          ),
+          style: const TextStyle(color: SuonaColors.onStageMuted, fontSize: 16),
+        ),
+        const SizedBox(height: 12),
+        for (final set in Shop.sets)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _SetCard(
+              set: set,
+              profile: p,
+              trying: _tryingSet?.id == set.id,
+              confirming: _confirming,
+              onTap: () => setState(() {
+                _trying = null;
+                _tryingSet = _tryingSet?.id == set.id ? null : set;
+              }),
+              onBuy: (item) => _buy(state, p, item),
+              onWear: () => _wearSet(state, p, set),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Für die Vorschau eines Amps: Bei akustischer Gitarre die E-Gitarre der
+/// Figur nehmen, sonst wäre der Amp unsichtbar.
+CharacterLook withElectric(CharacterLook look) {
+  if (look.amp == null || !CharacterArt.instance.isAcoustic(look.guitar)) return look;
+  return look.copyWith(guitar: CharacterLook.defaults(look.character).guitar);
+}
+
+class _Hint extends StatelessWidget {
+  const _Hint(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(color: SuonaColors.stageLine, borderRadius: BorderRadius.circular(14)),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline_rounded, color: SuonaColors.spot),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(text, style: const TextStyle(color: SuonaColors.onStage, fontSize: 15.5)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SetCard extends StatelessWidget {
+  const _SetCard({
+    required this.set,
+    required this.profile,
+    required this.trying,
+    required this.confirming,
+    required this.onTap,
+    required this.onBuy,
+    required this.onWear,
+  });
+
+  final OutfitSet set;
+  final Profile profile;
+  final bool trying;
+  final String? confirming;
+  final VoidCallback onTap;
+  final ValueChanged<ShopItem> onBuy;
+  final VoidCallback onWear;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = profile;
+    final have = set.ownedBy(p);
+    final done = have == set.items.length;
+    return Material(
+      color: trying ? SuonaColors.stageLine : SuonaColors.stageFloor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: done ? SuonaColors.ok : (trying ? SuonaColors.spot : Colors.transparent), width: 3),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(width: 150, height: 210, child: CharacterView(withElectric(Shop.wearSet(p, set, all: true)))),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            set.name,
+                            style: display(26, color: SuonaColors.onStage, weight: FontWeight.w700),
+                          ),
+                        ),
+                        if (done)
+                          const Icon(Icons.military_tech_rounded, color: SuonaColors.spot, size: 34)
+                        else
+                          Text(
+                            tr('$have von ${set.items.length}', '$have of ${set.items.length}'),
+                            style: display(20, color: SuonaColors.spot, weight: FontWeight.w700),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    for (final item in set.parts)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Shop.owns(p, item) ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                              color: Shop.owns(p, item) ? SuonaColors.ok : SuonaColors.onStageMuted,
+                              size: 24,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                item.name,
+                                style: const TextStyle(color: SuonaColors.onStage, fontSize: 17),
+                              ),
+                            ),
+                            if (!Shop.owns(p, item))
+                              SizedBox(
+                                width: 140,
+                                child: p.coins >= item.price
+                                    ? _Button(
+                                        confirming == item.id ? tr('Ja, kaufen!', 'Yes, buy!') : tr('Kaufen', 'Buy'),
+                                        confirming == item.id ? SuonaColors.coral : SuonaColors.spot,
+                                        SuonaColors.ink,
+                                        () => onBuy(item),
+                                        coins: confirming == item.id ? null : item.price,
+                                        compact: true,
+                                      )
+                                    : Row(
+                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        children: [
+                                          const CoinIcon(size: 18),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            '${item.price}',
+                                            style: display(17, color: SuonaColors.onStageMuted),
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    if (have > 0) ...[
+                      const SizedBox(height: 4),
+                      _Button(
+                        done ? tr('Ganzes Set anziehen', 'Wear the whole set') : tr('Meine Teile anziehen', 'Wear my parts'),
+                        SuonaColors.teal,
+                        Colors.white,
+                        onWear,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -250,6 +494,7 @@ class _ItemCard extends StatelessWidget {
     required this.item,
     required this.look,
     required this.face,
+    required this.guitarView,
     required this.owned,
     required this.wearing,
     required this.trying,
@@ -265,6 +510,7 @@ class _ItemCard extends StatelessWidget {
   final ShopItem item;
   final CharacterLook? look;
   final bool face;
+  final bool guitarView;
   final bool owned;
   final bool wearing;
   final bool trying;
@@ -319,7 +565,7 @@ class _ItemCard extends StatelessWidget {
               Expanded(
                 child: look == null
                     ? Icon(pedalIcon, size: 90, color: SuonaColors.spot)
-                    : CharacterView(look!, bust: face),
+                    : CharacterView(look!, bust: face, guitar: guitarView),
               ),
               const SizedBox(height: 6),
               Text(
@@ -345,12 +591,13 @@ class _ItemCard extends StatelessWidget {
 }
 
 class _Button extends StatelessWidget {
-  const _Button(this.label, this.bg, this.fg, this.onTap, {this.coins});
+  const _Button(this.label, this.bg, this.fg, this.onTap, {this.coins, this.compact = false});
   final String label;
   final Color bg;
   final Color fg;
   final VoidCallback? onTap;
   final int? coins;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -361,8 +608,8 @@ class _Button extends StatelessWidget {
         style: FilledButton.styleFrom(
           backgroundColor: bg,
           foregroundColor: fg,
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          textStyle: display(18),
+          padding: EdgeInsets.symmetric(vertical: compact ? 6 : 10),
+          textStyle: display(compact ? 16 : 18),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,

@@ -29,11 +29,11 @@ Future<void> showPrivacyDialog(BuildContext context) {
                   children: [
                     _Text(
                       tr(
-                        'Suona merkt sich nur deinen Spitznamen, deine Figur und wie sie aussieht, deine Münzen, was du im Shop gekauft hast, wie weit du im Abenteuer bist und welche Töne du schon gut kannst.\n\n'
+                        'Suona merkt sich nur deinen Spitznamen, deine Figur und wie sie aussieht, deine Münzen, was du im Shop gekauft hast, wie weit du im Abenteuer bist, wie schwer es für dich sein soll und welche Töne du schon gut kannst.\n\n'
                             'Das bleibt alles auf diesem Gerät. Suona schickt nichts davon weg.\n\n'
                             'Wenn du „Echt spielen“ benutzt, hört Suona deiner Gitarre zu. Dabei wird nichts aufgenommen und nichts gespeichert.\n\n'
                             'Es gibt keine Werbung, nichts zu kaufen und keinen Chat.',
-                        'Suona only remembers your nickname, your character and how it looks, your coins, what you bought in the shop, how far you are in the adventure and which notes you already know well.\n\n'
+                        'Suona only remembers your nickname, your character and how it looks, your coins, what you bought in the shop, how far you are in the adventure, how hard it should be for you and which notes you already know well.\n\n'
                             'All of it stays on this device. Suona doesn’t send any of it anywhere.\n\n'
                             'When you use “Play for real”, Suona listens to your guitar. Nothing is recorded and nothing is stored.\n\n'
                             'There are no ads, nothing to buy and no chat.',
@@ -41,14 +41,14 @@ Future<void> showPrivacyDialog(BuildContext context) {
                     ),
                     _Text(
                       tr(
-                        'Welche Daten: Pro Profil ein frei gewählter Spitzname, die gewählte Figur und ihr Aussehen, Münzen, im Spiel gekaufte Teile, Sterne im Abenteuer, Übungstage und der Lernstand pro Ton. Kein echter Name, kein Alter, keine Fotos, keine E-Mail, kein Konto.\n\n'
+                        'Welche Daten: Pro Profil ein frei gewählter Spitzname, die gewählte Figur und ihr Aussehen, Münzen, im Spiel gekaufte Teile, Sterne im Abenteuer, die Schwierigkeitsstufe (Mini, Junior, Teen oder Profi, von der Lehrperson gewählt, ohne Alter), Übungstage und der Lernstand pro Ton. Kein echter Name, kein Alter, keine Fotos, keine E-Mail, kein Konto.\n\n'
                             'Wo: Nur lokal im Datenordner der App auf diesem Gerät. Es gibt keinen Server und keinen Abgleich.\n\n'
                             'Internet: Das Spiel braucht kein Internet. Einzige Ausnahme ist „Nach Updates suchen“ im gesperrten Lehrerbereich. Erst auf Knopfdruck fragt die App bei GitHub (github.com) nach einer neuen Version. Dabei werden keine Daten über die Kinder übertragen, GitHub sieht nur die übliche Anfrage eines Geräts.\n\n'
                             'Mikrofon: Nur im Modus „Echt spielen“ und im Mikrofon-Test. Der Ton wird laufend im Speicher ausgewertet und sofort verworfen, nie aufgenommen oder gespeichert. Ein Symbol zeigt, wann das Mikrofon an ist.\n\n'
                             'Keine Werbung, keine In-App-Käufe, keine Analyse- oder Tracking-Dienste, keine Absturzberichte nach aussen, keine Links nach aussen.\n\n'
                             'Löschen: Im Lehrerbereich lässt sich jedes Profil löschen. Damit sind alle seine Daten von diesem Gerät entfernt. Beim Deinstallieren werden die Spielstände unter Android mitgelöscht, unter Windows bleiben sie im Ordner „AppData“ und lassen sich dort von Hand löschen.\n\n'
                             'Die App folgt den Grundsätzen der DSGVO (EU) und des DSG (Schweiz): Es werden so wenige Daten wie möglich erhoben, und keine verlässt das Gerät.',
-                        'What data: per profile a freely chosen nickname, the chosen character and its looks, coins, items bought in the game, adventure stars, practice days and the progress per note. No real name, no age, no photos, no e-mail, no account.\n\n'
+                        'What data: per profile a freely chosen nickname, the chosen character and its looks, coins, items bought in the game, adventure stars, the difficulty level (Mini, Junior, Teen or Pro, chosen by the teacher, without an age), practice days and the progress per note. No real name, no age, no photos, no e-mail, no account.\n\n'
                             'Where: only locally in the app’s data folder on this device. There is no server and no syncing.\n\n'
                             'Internet: the game doesn’t need the internet. The only exception is “Check for updates” in the locked teacher area. Only when pressed does the app ask GitHub (github.com) for a new version. No data about the children is sent; GitHub only sees an ordinary request from a device.\n\n'
                             'Microphone: only in “Play for real” mode and in the mic test. The sound is analysed in memory and discarded immediately, never recorded or stored. An icon shows when the microphone is on.\n\n'

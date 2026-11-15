@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:suona/core/character/character_art.dart';
 import 'package:suona/core/game/adventure.dart';
+import 'package:suona/core/game/badges.dart';
+import 'package:suona/core/game/difficulty.dart';
 import 'package:suona/core/game/question.dart';
 import 'package:suona/core/game/shop.dart';
 import 'package:suona/core/music/curriculum.dart';
@@ -72,6 +74,25 @@ void main() {
       expect(Adventure.timeFor(7, 4)!.inSeconds, lessThan(Adventure.timeFor(2, 4)!.inSeconds));
     });
 
+    test('Stufen: Mini hat mehr Zeit und ein geduldigeres Publikum als Profi', () {
+      final c = BuiltInCurricula.guitarTalks;
+      final mini = Adventure.plan(c, AccidentalStyle.mixed, 4, 4, Difficulty.mini);
+      final pro = Adventure.plan(c, AccidentalStyle.mixed, 4, 4, Difficulty.pro);
+      expect(mini.timeLimit!.inSeconds, greaterThan(pro.timeLimit!.inSeconds));
+      expect(mini.crowdLoss, lessThan(pro.crowdLoss));
+      expect(mini.crowdGain, greaterThan(pro.crowdGain));
+      expect(mini.length, lessThan(pro.length));
+      // Die Probe läuft für die Jüngsten länger ohne Zeit.
+      expect(Adventure.timeFor(3, 1, Difficulty.mini), isNull);
+      expect(Adventure.timeFor(3, 1, Difficulty.pro), isNotNull);
+      // Nie weniger als 3 Sekunden.
+      expect(Adventure.timeFor(7, 5, Difficulty.pro)!.inSeconds, greaterThanOrEqualTo(3));
+      // Die Stufe wird gespeichert, ältere Spielstände bekommen Junior.
+      final p = Profile(id: 'x', nickname: 'Mia', character: Character.luna, difficulty: Difficulty.mini);
+      expect(Profile.fromJson(jsonDecode(jsonEncode(p.toJson())) as Map<String, dynamic>).difficulty, Difficulty.mini);
+      expect(Profile.fromJson({'id': 'y'}).difficulty, Difficulty.junior);
+    });
+
     test('Sterne im Abenteuer', () {
       expect(Adventure.starsForRound(9, 10), 3);
       expect(Adventure.starsForRound(8, 10), 2);
@@ -121,10 +142,45 @@ void main() {
         expect(art.svg(look, face: true).contains('viewBox="5'), isTrue);
         // Jedes Shop-Teil (ausser Pedalen) gibt es für beide Figuren.
         for (final item in Shop.items.where((i) => i.slot != ShopSlot.pedal)) {
-          final ok = item.slot == ShopSlot.guitar ? art.hasGuitar(item.id) : art.hasItem(c, item.id);
+          final ok = switch (item.slot) {
+            ShopSlot.guitar => art.hasGuitar(item.id),
+            ShopSlot.amp => art.hasAmp(item.id),
+            _ => art.hasItem(c, item.id),
+          };
           expect(ok, isTrue, reason: '${item.id} für ${c.name}');
         }
+        // Amp nur mit E-Gitarre, Halsschmuck wird eingesetzt.
+        final rock = CharacterLook.defaults(c).copyWith(amp: 'amp_stack', neck: 'neck_chain');
+        expect(art.svg(rock).contains('<!--slot:amp-->'), isFalse);
+        expect(art.svg(rock).contains('<!--slot:neck-->'), isFalse);
+        expect(art.svg(rock.copyWith(guitar: 'g_classic')).contains('<!--slot:amp-->'), isTrue);
       }
+      // Akustisch laut Shop = akustisch laut Zeichnung.
+      for (final g in Shop.inSlot(ShopSlot.guitar)) {
+        expect(g.acoustic, art.isAcoustic(g.id), reason: g.id);
+      }
+    });
+
+    test('Sets: jedes Teil gibt es im Shop, kein Teil in zwei Sets', () {
+      final seen = <String>{};
+      for (final set in Shop.sets) {
+        expect(set.items.length, greaterThanOrEqualTo(3));
+        for (final id in set.items) {
+          expect(Shop.byId(id), isNotNull, reason: id);
+          expect(seen.add(id), isTrue, reason: '$id doppelt');
+        }
+      }
+      final p = Profile(id: 'x', nickname: 'Mia', character: Character.fuzz, coins: 10000);
+      final beach = Shop.sets.firstWhere((s) => s.id == 'beach');
+      expect(beach.completeFor(p), isFalse);
+      for (final i in beach.parts) {
+        Shop.buy(p, i);
+      }
+      expect(beach.completeFor(p), isTrue);
+      expect(badgesOf(p).firstWhere((b) => b.id == 'set_beach').earned, isTrue);
+      final look = Shop.wearSet(p, beach);
+      expect([look.hat, look.glasses, look.neck, look.vest], ['hat_straw', 'glasses_heart', 'neck_lei', 'vest_hawaii']);
+      expect(CharacterLook.fromJson(look.toJson(), Character.fuzz).neck, 'neck_lei');
     });
   });
 }

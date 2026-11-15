@@ -84,11 +84,18 @@ class QuizConfig {
 
 /// Welches Level im Abenteuer gespielt wird.
 class AdventureRef {
-  const AdventureRef({required this.curriculumId, required this.station, required this.level, required this.crowdLoss});
+  const AdventureRef({
+    required this.curriculumId,
+    required this.station,
+    required this.level,
+    required this.crowdLoss,
+    required this.crowdGain,
+  });
   final String curriculumId;
   final int station;
   final int level;
   final double crowdLoss;
+  final double crowdGain;
 }
 
 /// Eine Runde: Noten lesen, Griffbrett finden, Töne benennen oder setzen.
@@ -244,7 +251,7 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
       return;
     }
     _results.add(ok);
-    if (_adv != null) _crowd = (ok ? _crowd + Adventure.crowdGain : _crowd - _adv!.crowdLoss).clamp(0.0, 1.0);
+    if (_adv != null) _crowd = (ok ? _crowd + _adv!.crowdGain : _crowd - _adv!.crowdLoss).clamp(0.0, 1.0);
     if (ok) {
       _lastGain = _combo.hit();
       _coins += _lastGain;

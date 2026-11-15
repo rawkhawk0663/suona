@@ -22,7 +22,7 @@ class StationScreen extends StatelessWidget {
     final p = state.profiles.where((x) => x.id == profileId).firstOrNull;
     if (p == null) return const Scaffold(backgroundColor: SuonaColors.stage);
     final c = state.curriculumOf(p);
-    final plan0 = Adventure.plan(c, state.settings.accidentals, station, 0);
+    final plan0 = Adventure.plan(c, state.settings.accidentals, station, 0, p.difficulty);
     final fresh = plan0.focus.toList()..sort();
     final levels = Column(
       mainAxisSize: MainAxisSize.min,
@@ -35,7 +35,7 @@ class StationScreen extends StatelessWidget {
               level: l,
               stars: Adventure.stars(p, c.id, station, l),
               open: Adventure.levelOpen(p, c, station, l),
-              plan: Adventure.plan(c, state.settings.accidentals, station, l),
+              plan: Adventure.plan(c, state.settings.accidentals, station, l, p.difficulty),
               onTap: () => startLevel(context, state, p, station, l),
             ),
           ),

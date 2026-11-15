@@ -11,7 +11,7 @@ import '../quiz/quiz_screen.dart';
 /// Einstellungen für ein Level im Abenteuer.
 QuizConfig adventureConfig(SuonaState state, Profile p, int station, int level) {
   final c = state.curriculumOf(p);
-  final plan = Adventure.plan(c, state.settings.accidentals, station, level);
+  final plan = Adventure.plan(c, state.settings.accidentals, station, level, p.difficulty);
   return QuizConfig(
     mode: QuizMode.practice,
     types: plan.types,
@@ -19,7 +19,9 @@ QuizConfig adventureConfig(SuonaState state, Profile p, int station, int level) 
     timeLimit: plan.timeLimit,
     pool: plan.pool,
     focus: plan.focus,
-    adventure: AdventureRef(curriculumId: c.id, station: station, level: level, crowdLoss: plan.crowdLoss),
+    adventure: AdventureRef(curriculumId: c.id, station: station, level: level, crowdLoss: plan.crowdLoss,
+      crowdGain: plan.crowdGain,
+    ),
     pedals: [for (final i in Shop.pedalsOf(p)) i.id],
   );
 }

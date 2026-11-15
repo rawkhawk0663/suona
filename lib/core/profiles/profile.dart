@@ -1,6 +1,7 @@
 import '../character/look.dart';
 
 export '../character/look.dart' show Character, CharacterLook;
+import '../game/difficulty.dart';
 import '../game/note_stats.dart';
 import '../game/rewards.dart';
 import '../music/curriculum.dart';
@@ -14,6 +15,7 @@ class Profile {
     required this.character,
     this.curriculumId = BuiltInCurricula.guitarTalksId,
     this.step = 0,
+    this.difficulty = Difficulty.standard,
     this.coins = 0,
     DailyStreak? streak,
     NoteStats? stats,
@@ -42,6 +44,9 @@ class Profile {
   /// Lehrplan und wie weit das Kind darin ist (Schritt, 0-basiert, inklusive).
   String curriculumId;
   int step;
+
+  /// Schwierigkeitsstufe (setzt die Lehrperson). Nur die Stufe, kein Alter.
+  Difficulty difficulty;
 
   int coins;
   final DailyStreak streak;
@@ -81,6 +86,7 @@ class Profile {
     'character': character.name,
     'curriculum': curriculumId,
     'step': step,
+    'difficulty': difficulty.name,
     'coins': coins,
     'streak': streak.toJson(),
     'stats': stats.toJson(),
@@ -99,6 +105,7 @@ class Profile {
     character: Character.values.asNameMap()[j['character']] ?? Character.luna,
     curriculumId: j['curriculum'] as String? ?? BuiltInCurricula.guitarTalksId,
     step: (j['step'] as num?)?.toInt() ?? 0,
+    difficulty: Difficulty.fromName(j['difficulty'] as String?),
     coins: (j['coins'] as num?)?.toInt() ?? 0,
     streak: DailyStreak.fromJson(j['streak'] as Map<String, dynamic>?),
     stats: NoteStats.fromJson(j['stats'] as Map<String, dynamic>?),

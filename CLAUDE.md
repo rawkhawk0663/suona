@@ -11,7 +11,7 @@ Der Bauplan (fünf Pakete) liegt als Artifact „Suona Bauplan“ beim Besitzer.
 
 ## Kinderschutz und Datenschutz (nie brechen)
 - **Keine Daten verlassen das Gerät.** Kein Konto, kein Server, keine Analyse, keine Absturzberichte nach aussen, keine Werbung, keine Käufe, keine Links nach aussen, kein Chat.
-- Ein Profil hat nur **Spitzname und Figur** (Luna oder Fuzz). Kein echter Name, kein Alter, keine Fotos.
+- Ein Profil hat nur **Spitzname und Figur** (Luna oder Fuzz). Kein echter Name, kein Alter, keine Fotos. Statt des Alters wählt die Lehrperson eine **Stufe** (`Difficulty`), gespeichert wird nur die Stufe.
 - **Internet nur für „Nach Updates suchen“** im gesperrten Lehrerbereich, nur auf Knopfdruck. Suona sucht **nie** von selbst (anders als Volti).
 - **Mikrofon** nur im Mikrofon-Test und später in „Echt spielen“. Ton wird nur im Speicher ausgewertet, nie aufgenommen oder gespeichert. Sichtbar anzeigen, wann es an ist. Android fragt die Berechtigung erst beim Öffnen.
 - **Lehrerbereich** hinter einer Rechenaufgabe (`teacher_gate.dart`). Löschen von Profilen nur dort.
@@ -45,8 +45,12 @@ Der Bauplan (fünf Pakete) liegt als Artifact „Suona Bauplan“ beim Besitzer.
 - **Stationen** (`core/game/adventure.dart`): Kinderzimmer, Garage, Schulaula, Jugendclub, Stadtfest, Tonstudio, Festival, Stadion. Die Lehrplan-Schritte werden gleichmässig verteilt (`stepsOf`, bei 9 Schritten bekommt das Stadion zwei). Eine Station öffnet sich, wenn der Auftritt der vorigen geschafft ist **und** das Profil im Lehrplan mindestens beim ersten Schritt der Station steht (`StationLock.teacher`: neue Töne kommen zuerst im Unterricht, Wunsch des Besitzers: die Lehrperson steuert). Der Lehrerbereich zeigt, worauf ein Kind wartet.
 - **Level** (`Adventure.plan`): 0 Aufwärmen (nur neue Töne, ohne Zeit), 1 Probe (Notenname), 2 Griffbrett, 3 Welcher Ton?, 4 Generalprobe (gemischt), 5 Auftritt (15 Töne, gemischt). Zeit pro Ton 12 s in der ersten bis 5 s in der letzten Station (`timeFor`). Sterne strenger als beim Üben (60/75/90 %). Erstes Schaffen gibt 15 Münzen, ein Auftritt 50. Das beste Ergebnis zählt. Gespeichert in `Profile.adventure[curriculumId]` (8 × 6 Sterne).
 - **Publikum**: Stimmung startet bei 0.6, richtig +0.08, falsch −(0.14 + 0.01 × Station, Auftritt +0.04). Bei 0 ist das Level vorbei.
+- **Stufen** (`core/game/difficulty.dart`, Wunsch des Besitzers: nach Alter): Mini (6–8), Junior (9–11, Standard), Teen (12–15), Profi (16+). Die Lehrperson stellt sie pro Profil im Lehrerbereich ein (`Profile.difficulty`). Sie verändert Zeit pro Ton (×1.6/1.3/1.0/0.8, mindestens 3 s), wie lange Probe und Griffbrett ohne Zeit bleiben, Publikum (Fehler ×0.6/0.8/1.0/1.2, richtig +0.10/0.09/0.08/0.07) und bei Mini die Länge der Level (6/8/12 statt 8/10/15). Die Zahlen oben gelten für Teen.
 - **Pedale** (nur im Abenteuer, je einmal pro Level): Schild-Pedal (der nächste Fehler zählt nicht), Kapodaster (Zeit für einen Ton anhalten, nur mit Zeitdruck), Stimmgerät (streicht zwei falsche Namen oder zeigt die Saite, nicht bei „Note setzen“).
-- **Shop** (`core/game/shop.dart`, `features/shop/shop_screen.dart`): Kopf (Bandana, Mütze, Kopfhörer, Krone), Brillen, Westen, Gitarren (zwei Grundgitarren gratis), Pedale. Nur Spiel-Münzen, keine Käufe mit Geld. Anprobieren vor dem Kauf, Kauf muss einmal bestätigt werden (gegen Versehen). Farben (Haut, Haare, Augen, Shirt) sind gratis.
+- **Shop** (`core/game/shop.dart`, `features/shop/shop_screen.dart`): Reiter Aussehen, Sets, Kopf, Brillen, Hals, Westen, Gitarren, Amps, Pedale. Rund 50 Teile. Nur Spiel-Münzen, keine Käufe mit Geld. Anprobieren vor dem Kauf, Kauf muss einmal bestätigt werden (gegen Versehen). Farben (Haut, Haare, Augen, Shirt) sind gratis.
+- **Gitarren**: akustisch (`Shop.acousticGuitars`, muss zu `ACOUSTIC_GUITARS` im Figuren-Programm passen, der Test prüft das) oder E-Gitarre. Gratis sind die beiden E-Gitarren der Figuren und die Konzertgitarre (`Shop.starterAcoustic`). Beim neuen Profil wählt das Kind nach der Figur seine Startgitarre (E-Gitarre oder Konzertgitarre, Pflicht).
+- **Amps** (Fach `amp`) stehen rechts neben der Figur, aber nur mit E-Gitarre. Mit akustischer Gitarre bleiben sie unsichtbar, der Shop zeigt dann einen Hinweis und in der Vorschau die E-Gitarre der Figur (`withElectric`).
+- **Sets** (`Shop.sets`, `OutfitSet`): Strasse, Strand, Flower-Power, Country, Jazz-Gala, Heavy Metal, Weltall, Rockstar. Jedes Teil gehört zu höchstens einem Set. Ein volles Set gibt ein Abzeichen (`set_<id>`), „Meine Teile anziehen“ zieht alle gekauften Teile eines Sets an. Kaufen geht direkt in der Set-Karte.
 - **Abzeichen** (`core/game/badges.dart`): werden aus dem Spielstand berechnet, nicht gespeichert.
 
 ## Lehrpläne
@@ -62,7 +66,7 @@ Der Bauplan (fünf Pakete) liegt als Artifact „Suona Bauplan“ beim Besitzer.
 
 ## Daten
 Alles im Datenordner der App (`getApplicationSupportDirectory`, unter Windows `%APPDATA%\Suona\Suona`):
-- `Spielstaende/<id>.json` (Format `suona-profil` v1, mit `look`, `owned`, `adventure`)
+- `Spielstaende/<id>.json` (Format `suona-profil` v1, mit `difficulty`, `look` (auch `neck`, `amp`), `owned`, `adventure`)
 - `Lehrplaene/<id>.json` (Format `suona-lehrplan` v1)
 - `einstellungen.json`, `arcade_vorlagen.json`, `fehler.log`, `update.log`
 Geschrieben wird immer über eine Zwischendatei (`json_files.dart`).
@@ -88,8 +92,9 @@ tool/make_icon.py   erzeugt das App-Symbol (Windows .ico, Android)
 
 ## Figuren
 - Stil „Mix 2“ (vom Besitzer gewählt, aus einem Vergleich von vier Stilen): grosse, glänzende Chibi-Augen und Bäckchen, dazu dicke dunkle Konturen (`#15121F`), harte Schatten als Sichel und Rock-Details. Luna: lange Haare, Stern im Haar (verschwindet unter Kopfbedeckungen) und auf dem Shirt, korallroter Rock, Ringelstrumpfhose, Stiefel, türkise Pfeil-Gitarre. Fuzz: oben stachlige Haare mit kurzen Seiten, Shirt mit Blitz, Jeans mit Riss, Turnschuhe, schwarzes Schweissband, rote Rock-Gitarre.
-- **Baukasten:** `tool/make_characters.py` erzeugt `assets/characters/<figur>_template.svg` (Farben als Platzhalter `{{skin}}`, `{{hair}}` …, Stellen `<!--slot:guitar|vest|glasses|hat-->`, `<!--defs-->`) und `items.json` (Gitarren für beide, übrige Teile pro Figur). `CharacterArt` (`core/character/character_art.dart`) setzt zur Laufzeit zusammen, `CharacterLook` (`core/character/look.dart`) hält Farben und Teile. `luna.svg`/`fuzz.svg` sind nur Vorschau und Download-Bild.
+- **Baukasten:** `tool/make_characters.py` erzeugt `assets/characters/<figur>_template.svg` (Farben als Platzhalter `{{skin}}`, `{{hair}}` …, Stellen `<!--slot:guitar|vest|neck|glasses|hat|amp-->`, `<!--defs-->`) und `items.json` (Gitarren mit `kind` acoustic/electric und Amps für beide, übrige Teile pro Figur). Halsschmuck liegt im Körper über Shirt und Weste, der Amp ganz hinten in den Koordinaten der fertigen Figur (rechts der Füsse, Boden y = 296). `CharacterArt` (`core/character/character_art.dart`) setzt zur Laufzeit zusammen, `CharacterLook` (`core/character/look.dart`) hält Farben und Teile. `luna.svg`/`fuzz.svg` sind nur Vorschau und Download-Bild.
 - Nie von Hand in den SVGs ändern, sondern im Python-Programm und neu erzeugen (`python3 tool/make_characters.py`). Ein neues Shop-Teil: im Programm zeichnen (für beide Figuren), in `Shop.items` mit Preis und Namen eintragen. Der Test prüft, dass jedes Shop-Teil für beide Figuren existiert.
+- Grosse Hüte sitzen auf der Krempen-Höhe `BRIM` (Fuzz höher wegen der Stacheln, die dürfen seitlich herausschauen). `CharacterView(guitar: true)` zeigt nur Oberkörper und Gitarre (Gitarren im Shop, Startgitarre).
 - Kopf und Körper sind getrennte Gruppen (`HEAD_SCALE` 1.16, `BODY_SCALE` 0.95), die Konturen bleiben trotzdem gleich dick (auch bei den Teilen).
 - Der Anschlagarm liegt vor der Gitarre, der Greifarm hinter dem Hals (Wunsch des Besitzers).
 - Keine Strichelung (`stroke-dasharray`) verwenden, `flutter_svg` kennt sie nicht. Schatten über `clipPath` funktionieren.

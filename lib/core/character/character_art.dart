@@ -16,6 +16,9 @@ class CharacterArt {
   /// Ausschnitte für die runden Profilbilder (wie in make_characters.py).
   static const _faceBox = {Character.luna: '58 24 124 124', Character.fuzz: '56 22 128 128'};
 
+  /// Oberkörper mit Gitarre (gleich für beide Figuren).
+  static const _guitarBox = '40 104 216 176';
+
   /// Grösserer Kopf-Ausschnitt mit Platz für Mützen und Kronen (Shop).
   static const _bustBox = {Character.luna: '42 -16 156 156', Character.fuzz: '36 -52 168 168'};
 
@@ -41,9 +44,15 @@ class CharacterArt {
 
   bool hasItem(Character c, String id) => (_items[c.name] as Map<String, dynamic>).containsKey(id);
 
+  bool hasAmp(String id) => (_items['amps'] as Map<String, dynamic>).containsKey(id);
+
+  /// Akustische Gitarren brauchen keinen Amp (er bleibt dann unsichtbar).
+  bool isAcoustic(String guitarId) =>
+      ((_items['guitars'] as Map<String, dynamic>)[guitarId] as Map<String, dynamic>?)?['kind'] == 'acoustic';
+
   /// Fertiges SVG einer Figur, auf Wunsch nur der Kopf.
-  String svg(CharacterLook look, {bool face = false, bool bust = false}) {
-    final key = '${look.key}|$face|$bust';
+  String svg(CharacterLook look, {bool face = false, bool bust = false, bool guitar = false}) {
+    final key = '${look.key}|$face|$bust|$guitar';
     final hit = _cache[key];
     if (hit != null) return hit;
     var s = _templates[look.character]!;
@@ -66,12 +75,19 @@ class CharacterArt {
     }
     final defs = StringBuffer();
     final guitars = _items['guitars'] as Map<String, dynamic>;
-    final guitar =
+    final guitarOnly = guitar;
+    final guitarItem =
         (guitars[look.guitar] ?? guitars[CharacterLook.defaults(look.character).guitar]) as Map<String, dynamic>;
-    defs.write(guitar['defs']);
-    s = s.replaceFirst('<!--slot:guitar-->', guitar['svg'] as String);
+    defs.write(guitarItem['defs']);
+    s = s.replaceFirst('<!--slot:guitar-->', guitarItem['svg'] as String);
+    // Der Amp steht nur bei E-Gitarren da und nicht im Kopf-Ausschnitt.
+    final amp = look.amp == null ? null : (_items['amps'] as Map<String, dynamic>)[look.amp] as Map<String, dynamic>?;
+    if (amp != null && guitarItem['kind'] != 'acoustic' && !face && !bust && !guitarOnly) {
+      defs.write(amp['defs']);
+      s = s.replaceFirst('<!--slot:amp-->', amp['svg'] as String);
+    }
     final own = _items[look.character.name] as Map<String, dynamic>;
-    for (final slot in const ['vest', 'glasses', 'hat']) {
+    for (final slot in const ['vest', 'neck', 'glasses', 'hat']) {
       final id = look.itemIn(slot);
       final it = id == null ? null : own[id] as Map<String, dynamic>?;
       if (it == null) continue;
@@ -81,7 +97,9 @@ class CharacterArt {
       if (slot == 'hat') s = s.replaceFirst(RegExp(r'<!--slot:hairclip-->.*?<!--/slot:hairclip-->', dotAll: true), '');
     }
     s = s.replaceFirst('<!--defs-->', defs.toString());
-    if (face || bust) {
+    if (guitarOnly) {
+      s = s.replaceFirst(RegExp(r'viewBox="[^"]+"'), 'viewBox="$_guitarBox"');
+    } else if (face || bust) {
       final box = bust ? _bustBox[look.character] : _faceBox[look.character];
       s = s.replaceFirst(RegExp(r'viewBox="[^"]+"'), 'viewBox="$box"');
     }

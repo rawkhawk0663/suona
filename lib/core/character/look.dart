@@ -73,6 +73,8 @@ class CharacterLook {
     this.hat,
     this.glasses,
     this.vest,
+    this.neck,
+    this.amp,
   });
 
   factory CharacterLook.defaults(Character c) => c == Character.luna
@@ -103,11 +105,19 @@ class CharacterLook {
   final String? glasses;
   final String? vest;
 
-  /// Teil in einem Fach (hat, glasses, vest, guitar).
+  /// Halsschmuck (Halstuch, Kette, Fliege …).
+  final String? neck;
+
+  /// Verstärker neben der Figur. Sichtbar nur mit E-Gitarre.
+  final String? amp;
+
+  /// Teil in einem Fach (hat, glasses, vest, neck, amp, guitar).
   String? itemIn(String slot) => switch (slot) {
     'hat' => hat,
     'glasses' => glasses,
     'vest' => vest,
+    'neck' => neck,
+    'amp' => amp,
     'guitar' => guitar,
     _ => null,
   };
@@ -121,9 +131,13 @@ class CharacterLook {
     String? hat,
     String? glasses,
     String? vest,
+    String? neck,
+    String? amp,
     bool clearHat = false,
     bool clearGlasses = false,
     bool clearVest = false,
+    bool clearNeck = false,
+    bool clearAmp = false,
   }) => CharacterLook(
     character: character,
     skin: skin ?? this.skin,
@@ -134,6 +148,8 @@ class CharacterLook {
     hat: clearHat ? null : (hat ?? this.hat),
     glasses: clearGlasses ? null : (glasses ?? this.glasses),
     vest: clearVest ? null : (vest ?? this.vest),
+    neck: clearNeck ? null : (neck ?? this.neck),
+    amp: clearAmp ? null : (amp ?? this.amp),
   );
 
   /// Ein Teil anziehen oder (mit null) das Fach leeren. Gitarren lassen sich nicht ausziehen.
@@ -141,12 +157,14 @@ class CharacterLook {
     'hat' => id == null ? copyWith(clearHat: true) : copyWith(hat: id),
     'glasses' => id == null ? copyWith(clearGlasses: true) : copyWith(glasses: id),
     'vest' => id == null ? copyWith(clearVest: true) : copyWith(vest: id),
+    'neck' => id == null ? copyWith(clearNeck: true) : copyWith(neck: id),
+    'amp' => id == null ? copyWith(clearAmp: true) : copyWith(amp: id),
     'guitar' => id == null ? this : copyWith(guitar: id),
     _ => this,
   };
 
   /// Eindeutiger Schlüssel (für den Zwischenspeicher der Bilder).
-  String get key => '${character.name}|$skin|$hair|$eyes|$shirt|$guitar|$hat|$glasses|$vest';
+  String get key => '${character.name}|$skin|$hair|$eyes|$shirt|$guitar|$hat|$glasses|$vest|$neck|$amp';
 
   Map<String, dynamic> toJson() => {
     'character': character.name,
@@ -158,6 +176,8 @@ class CharacterLook {
     'hat': hat,
     'glasses': glasses,
     'vest': vest,
+    'neck': neck,
+    'amp': amp,
   };
 
   static CharacterLook fromJson(Map<String, dynamic>? j, Character fallback) {
@@ -174,6 +194,8 @@ class CharacterLook {
       hat: j['hat'] as String?,
       glasses: j['glasses'] as String?,
       vest: j['vest'] as String?,
+      neck: j['neck'] as String?,
+      amp: j['amp'] as String?,
     );
   }
 }

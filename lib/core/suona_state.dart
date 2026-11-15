@@ -136,13 +136,15 @@ class SuonaState extends ChangeNotifier {
 
   // ---------- Profile ----------
 
-  Future<Profile> addProfile(String nickname, Character character, {String? curriculumId}) async {
+  Future<Profile> addProfile(String nickname, Character character, {String? curriculumId, String? guitar}) async {
     final profile = Profile(
       id: const Uuid().v4(),
       nickname: nickname.trim(),
       character: character,
       curriculumId: curriculumId ?? BuiltInCurricula.guitarTalksId,
     );
+    // Startgitarre (beim neuen Profil gewählt: E-Gitarre oder Konzertgitarre).
+    if (guitar != null) profile.look = CharacterLook.defaults(character).copyWith(guitar: guitar);
     profiles.add(profile);
     notifyListeners();
     await saveProfile(profile);
