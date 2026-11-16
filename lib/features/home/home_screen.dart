@@ -186,14 +186,25 @@ class HomeScreen extends StatelessWidget {
                   child: LayoutBuilder(
                     builder: (context, c) {
                       if (c.maxWidth >= 760) {
-                        return Row(
-                          children: [
-                            Expanded(
-                              child: Padding(padding: const EdgeInsets.only(bottom: 24), child: hero),
+                        // Figur und Kacheln als Gruppe in der Mitte, mit Rand
+                        // rechts (sonst kleben die Kacheln am Bildschirmrand).
+                        final side = (c.maxWidth * 0.06).clamp(16.0, 90.0);
+                        return Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 1240),
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(horizontal: side),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Padding(padding: const EdgeInsets.only(bottom: 24), child: hero),
+                                  ),
+                                  const SizedBox(width: 32),
+                                  SizedBox(width: 470, child: Center(child: tiles)),
+                                ],
+                              ),
                             ),
-                            const SizedBox(width: 24),
-                            SizedBox(width: 470, child: Center(child: tiles)),
-                          ],
+                          ),
                         );
                       }
                       return SingleChildScrollView(

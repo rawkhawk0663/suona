@@ -93,8 +93,23 @@ class CharacterArt {
       if (it == null) continue;
       defs.write(it['defs']);
       s = s.replaceFirst('<!--slot:$slot-->', it['svg'] as String);
-      // Mit Kopfbedeckung verschwindet Lunas Haarspange.
-      if (slot == 'hat') s = s.replaceFirst(RegExp(r'<!--slot:hairclip-->.*?<!--/slot:hairclip-->', dotAll: true), '');
+      if (slot == 'hat') {
+        // Mit Kopfbedeckung verschwindet Lunas Haarspange.
+        s = s.replaceFirst(RegExp(r'<!--slot:hairclip-->.*?<!--/slot:hairclip-->', dotAll: true), '');
+        // Unter grossen Hüten trägt Fuzz die flache Frisur (sonst stechen die Stacheln heraus).
+        final hatHair = (_items['hathair'] as Map<String, dynamic>?)?[look.character.name] as Map<String, dynamic>?;
+        if (it['covers'] == true && hatHair != null) {
+          defs.write(hatHair['defs']);
+          s = s.replaceFirst(
+            RegExp(r'<!--slot:hairtop-->.*?<!--/slot:hairtop-->', dotAll: true),
+            hatHair['svg'] as String,
+          );
+        }
+      }
+      // Unter Anhängern und Halstüchern verschwindet das Bild auf dem Shirt.
+      if (it['hidesLogo'] == true) {
+        s = s.replaceFirst(RegExp(r'<!--slot:logo-->.*?<!--/slot:logo-->', dotAll: true), '');
+      }
     }
     s = s.replaceFirst('<!--defs-->', defs.toString());
     if (guitarOnly) {

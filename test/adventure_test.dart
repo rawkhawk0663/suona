@@ -154,6 +154,16 @@ void main() {
         expect(art.svg(rock).contains('<!--slot:amp-->'), isFalse);
         expect(art.svg(rock).contains('<!--slot:neck-->'), isFalse);
         expect(art.svg(rock.copyWith(guitar: 'g_classic')).contains('<!--slot:amp-->'), isTrue);
+        // Kette verdeckt das Shirt-Bild, Halstuch-freie Figur behält es.
+        expect(art.svg(rock).contains('<!--slot:logo-->'), isFalse);
+        expect(art.svg(CharacterLook.defaults(c)).contains('<!--slot:logo-->'), isTrue);
+        // Unter grossen Hüten trägt Fuzz die flache Frisur, unter der Krone nicht.
+        final cowboy = art.svg(CharacterLook.defaults(c).copyWith(hat: 'hat_cowboy'));
+        final crown = art.svg(CharacterLook.defaults(c).copyWith(hat: 'hat_crown'));
+        if (c == Character.fuzz) {
+          expect(cowboy.contains('<!--slot:hairtop-->'), isFalse);
+          expect(crown.contains('<!--slot:hairtop-->'), isTrue);
+        }
       }
       // Akustisch laut Shop = akustisch laut Zeichnung.
       for (final g in Shop.inSlot(ShopSlot.guitar)) {

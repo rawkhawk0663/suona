@@ -27,7 +27,7 @@
 <path d="M92 136 Q120 128 148 136 L154 196 L86 196 Z" fill="#8E6CEF"/>
 <g clip-path="url(#ly6)"><rect x="-50" y="-50" width="400" height="450" fill="#6A48C9"/><path d="M92 136 Q120 128 148 136 L154 196 L86 196 Z" fill="#8E6CEF" transform="translate(-9 -5)"/></g>
 <path d="M92 136 Q120 128 148 136 L154 196 L86 196 Z" fill="none" stroke="#15121F" stroke-width="4.74" stroke-linejoin="round"/>
-<path d="M110 162 l4 9 10 1 -8 6 3 10 -9 -5 -9 5 3 -10 -8 -6 10 -1 z" fill="#FFC233" stroke="#15121F" stroke-width="2.63" stroke-linejoin="round"/>
+<!--slot:logo--><path d="M110 162 l4 9 10 1 -8 6 3 10 -9 -5 -9 5 3 -10 -8 -6 10 -1 z" fill="#FFC233" stroke="#15121F" stroke-width="2.63" stroke-linejoin="round"/><!--/slot:logo-->
 <!--slot:vest--><!--slot:neck-->
 <path d="M148 146 Q170 164 182 146" fill="none" stroke="#15121F" stroke-width="23.16" stroke-linecap="round"/>
 <path d="M148 146 Q170 164 182 146" fill="none" stroke="#F3BE98" stroke-width="13.68" stroke-linecap="round"/>

@@ -109,7 +109,7 @@ def luna_parts():
     b.shape('path', {'d': 'M80 192 L160 192 L174 226 L66 226 Z'}, '#FF6B78', '#D94A5B', (-9, -5))
     b.raw(''.join(f'<rect x="{x}" y="215" width="6" height="2.5" fill="#15121F"/>' for x in range(74, 166, 11)))
     b.shape('path', {'d': 'M92 136 Q120 128 148 136 L154 196 L86 196 Z'}, T['shirt'], T['shirtS'], (-9, -5))
-    b.raw('<path d="M110 162 l4 9 10 1 -8 6 3 10 -9 -5 -9 5 3 -10 -8 -6 10 -1 z" fill="#FFC233" stroke="#15121F" stroke-width="2.5" stroke-linejoin="round"/>')
+    b.raw('<!--slot:logo--><path d="M110 162 l4 9 10 1 -8 6 3 10 -9 -5 -9 5 3 -10 -8 -6 10 -1 z" fill="#FFC233" stroke="#15121F" stroke-width="2.5" stroke-linejoin="round"/><!--/slot:logo-->')
     b.raw('<!--slot:vest--><!--slot:neck-->')
     b.arm('M148 146 Q170 164 182 146', T['skin'])
     b.raw(f'<g transform="rotate({GUITAR_ROTATION["luna"]} 110 211)"><!--slot:guitar--></g>')
@@ -141,7 +141,7 @@ def fuzz_parts():
     b.shape('path', {'d': 'M128 274 L152 274 Q162 278 164 292 L126 292 Z'}, '#F4F2FF', '#C9C6E0', (-6, -4))
     b.raw('<path d="M78 288 L118 288 M126 288 L164 288" stroke="#E23D3D" stroke-width="3.5"/>')
     b.shape('path', {'d': 'M88 136 Q120 126 152 136 L158 226 L82 226 Z'}, T['shirt'], T['shirtS'], (-9, -5))
-    b.raw('<path d="M128 150 L114 178 L124 178 L116 204 L138 170 L128 170 L136 150 Z" fill="#FFC233" stroke="#15121F" stroke-width="3" stroke-linejoin="round"/>')
+    b.raw('<!--slot:logo--><path d="M128 150 L114 178 L124 178 L116 204 L138 170 L128 170 L136 150 Z" fill="#FFC233" stroke="#15121F" stroke-width="3" stroke-linejoin="round"/><!--/slot:logo-->')
     b.raw('<!--slot:vest--><!--slot:neck-->')
     b.arm('M150 146 Q174 164 186 144', T['skin'])
     b.raw(f'<g transform="rotate({GUITAR_ROTATION["fuzz"]} 110 211)"><!--slot:guitar--></g>')
@@ -154,8 +154,10 @@ def fuzz_parts():
     h.shape('ellipse', {'cx': 74, 'cy': 96, 'rx': 9, 'ry': 11}, T['skin'])
     h.shape('ellipse', {'cx': 166, 'cy': 96, 'rx': 9, 'ry': 11}, T['skin'], T['skinS'], (-4, 0))
     h.shape('ellipse', {'cx': 120, 'cy': 90, 'rx': 46, 'ry': 46}, T['skin'], T['skinS'], (-8, -5))
+    h.raw('<!--slot:hairtop-->')
     h.shape('path', {'d': 'M76 84 C72 62 78 50 88 42 L74 18 L100 26 L102 2 L120 22 L136 -2 L142 22 L164 6 L162 30 L186 24 L172 48 C180 60 170 68 166 84 L160 70 L150 78 L144 62 L132 74 L124 58 L114 72 L104 60 L96 72 L88 64 Z'}, T['hair'], T['hairS'], (-8, 4))
     h.raw(f'<path d="M106 14 L112 36 M138 8 L138 32 M162 20 L154 40" stroke="{T["hairL"]}" stroke-width="3" stroke-linecap="round"/>')
+    h.raw('<!--/slot:hairtop-->')
     eyes(h, T['eyes'], False)
     h.raw('<path d="M88 78 L112 82 M128 81 Q140 71 152 79" stroke="#15121F" stroke-width="5" stroke-linecap="round" fill="none"/>')
     h.raw('<ellipse cx="85" cy="113" rx="8" ry="5" fill="#FF8A9A" opacity=".5"/><ellipse cx="155" cy="113" rx="8" ry="5" fill="#FF8A9A" opacity=".5"/>')
@@ -255,9 +257,16 @@ GUITARS = {
 HEAD_Y = {'luna': 0, 'fuzz': -8}   # Fuzz' Kopfteile sitzen etwas höher (Frisur)
 
 
+def fuzz_hat_hair(prefix):
+    """Fuzz unter grossen Hüten: flach anliegende Haare, nur die Stirnfransen schauen hervor."""
+    s = Svg(prefix)
+    s.shape('path', {'d': 'M76 86 C70 54 92 36 120 36 C148 36 172 54 166 86 L160 70 L150 78 L144 62 L132 74 L124 58 L114 72 L104 60 L96 72 L88 64 Z'}, T['hair'], T['hairS'], (-8, 4))
+    return s
+
+
 def beanie(prefix, who):
     s = Svg(prefix)
-    dy = HEAD_Y[who] - (14 if who == 'fuzz' else 0)
+    dy = 0 if who == 'luna' else 2
     s.shape('path', {'d': f'M70 {66 + dy} C66 {12 + dy} 174 {12 + dy} 170 {66 + dy} Z'}, '#E23D3D', '#B52530', (-7, 5))
     s.shape('path', {'d': f'M64 {58 + dy} Q120 {46 + dy} 176 {58 + dy} L176 {74 + dy} Q120 {62 + dy} 64 {74 + dy} Z'}, '#B52530')
     s.raw(''.join(f'<rect x="{x}" y="{58 + dy}" width="3" height="12" rx="1.5" fill="#8A1C25"/>' for x in range(74, 170, 10)))
@@ -326,11 +335,17 @@ VEST_PANELS = {
 }
 
 
+def lapels(s, color):
+    """Kragen an beiden Seiten: so liest man eine Weste auch neben den Armen."""
+    s.raw(f'<path d="M110 131 L97 135 L103 158 Z M130 131 L143 135 L137 158 Z" fill="{color}" stroke="{OUT}" stroke-width="2.6" stroke-linejoin="round"/>')
+
+
 def vest(prefix, who, color, shade, studs):
     s = Svg(prefix)
     left, right, bottom = VEST_PANELS[who]
     s.shape('path', {'d': left}, color, shade, (5, -4))
     s.shape('path', {'d': right}, color, shade, (-5, -4))
+    lapels(s, shade)
     if studs:
         for y in range(142, bottom - 6, 12):
             s.raw(f'<circle cx="{103 - (y - 132) * 0.08:.1f}" cy="{y}" r="1.9" fill="#C9CAD8"/>')
@@ -338,7 +353,7 @@ def vest(prefix, who, color, shade, studs):
     else:
         s.raw(''.join(f'<rect x="{100 - (y - 132) * 0.08:.1f}" y="{y}" width="1.6" height="5" fill="#F2C94C"/>' for y in range(140, bottom - 6, 9)))
         s.raw(''.join(f'<rect x="{139 + (y - 132) * 0.08:.1f}" y="{y}" width="1.6" height="5" fill="#F2C94C"/>' for y in range(140, bottom - 6, 9)))
-        s.raw(f'<rect x="139" y="{bottom - 40}" width="10" height="9" rx="1.5" fill="none" stroke="#F2C94C" stroke-width="1.5"/>')
+        s.raw(f'<rect x="140" y="{bottom - 44}" width="10" height="9" rx="1.5" fill="none" stroke="#F2C94C" stroke-width="1.5"/>')
     return s
 
 
@@ -377,17 +392,22 @@ def flower(cx, cy, r, petal, center='#FFC233', sw=1.6):
 
 
 # Unterkante (Krempe) grosser Hüte: Fuzz trägt sie über seinen Stacheln.
-BRIM = {'luna': 62, 'fuzz': 40}
+BRIM = {'luna': 62, 'fuzz': 64}
 
 
 def cap(prefix, who):
+    """Baseball-Kappe von vorne: Kuppel mit Nähten, Logo und Schirm nach vorne."""
     s = Svg(prefix)
-    b = BRIM[who] + 2
-    s.shape('path', {'d': f'M72 {b} C70 {b - 50} 170 {b - 50} 168 {b} Z'}, '#2F6FCB', '#1F4E99', (-7, 5))
-    s.shape('path', {'d': f'M150 {b - 8} C176 {b - 14} 200 {b - 8} 206 {b + 4} C186 {b + 8} 166 {b + 6} 148 {b + 4} Z'}, '#1F4E99')
-    s.raw(f'<path d="M66 {b} Q120 {b - 10} 174 {b}" stroke="{OUT}" stroke-width="{W}" fill="none"/>')
-    s.shape('circle', {'cx': 120, 'cy': b - 37, 'r': 5}, '#F4F2FF')
-    s.raw(f'<path d="M108 {b - 22} l4 8 9 1 -7 6 2 9 -8 -5 -8 5 2 -9 -7 -6 9 -1 z" transform="translate(6 0)" fill="#F4F2FF" stroke="{OUT}" stroke-width="2" stroke-linejoin="round"/>')
+    b = BRIM[who]
+    dome = f'M70 {b + 2} C66 {b - 58} 174 {b - 58} 170 {b + 2} Q120 {b - 8} 70 {b + 2} Z'
+    s.shape('path', {'d': dome}, '#2F6FCB', '#1F4E99', (-7, 5))
+    s.raw(f'<path d="M120 {b - 41} Q102 {b - 30} 98 {b - 6} M120 {b - 41} Q138 {b - 30} 142 {b - 6}" stroke="#1F4E99" stroke-width="2.4" fill="none"/>')
+    s.raw(f'<circle cx="120" cy="{b - 20}" r="9.5" fill="#F4F2FF" stroke="{OUT}" stroke-width="2.4"/>')
+    s.raw(f'<path d="M122 {b - 27} L122 {b - 16}" stroke="{OUT}" stroke-width="2.2"/><ellipse cx="119" cy="{b - 15.5}" rx="3.4" ry="2.6" fill="{OUT}"/>'
+          f'<path d="M122 {b - 27} Q127 {b - 25} 127 {b - 21}" stroke="{OUT}" stroke-width="2" fill="none" stroke-linecap="round"/>')
+    s.shape('circle', {'cx': 120, 'cy': b - 43, 'r': 4}, '#1F4E99')
+    visor = f'M64 {b} Q120 {b - 12} 176 {b} Q180 {b + 9} 164 {b + 11} Q120 {b + 3} 76 {b + 11} Q60 {b + 9} 64 {b} Z'
+    s.shape('path', {'d': visor}, '#1F4E99', '#163C78', (0, -4))
     return s
 
 
@@ -404,10 +424,12 @@ def cowboy(prefix, who, color='#A0612F', shade='#7A4520', band='#3A2416'):
 def tophat(prefix, who):
     s = Svg(prefix)
     b = BRIM[who] - 2
-    s.shape('path', {'d': f'M92 {b} L94 {b - 54} L146 {b - 54} L148 {b} Z'}, '#2B2340', '#1A1428', (-7, 0))
-    s.shape('path', {'d': f'M93 {b - 16} L147 {b - 16} L148 {b - 4} L92 {b - 4} Z'}, '#D7263D')
-    s.raw(f'<path d="M102 {b - 46} L102 {b - 24}" stroke="#4A4060" stroke-width="4" stroke-linecap="round"/>')
-    s.shape('ellipse', {'cx': 120, 'cy': b, 'rx': 42, 'ry': 7}, '#2B2340')
+    s.raw(f'<g transform="rotate(-8 120 {b})">')
+    s.shape('path', {'d': f'M88 {b} L91 {b - 58} Q120 {b - 63} 149 {b - 58} L152 {b} Z'}, '#2B2340', '#1A1428', (-8, 0))
+    s.shape('path', {'d': f'M89 {b - 17} L151 {b - 17} L152 {b - 4} L88 {b - 4} Z'}, '#D7263D')
+    s.raw(f'<path d="M100 {b - 50} L99 {b - 24}" stroke="#4A4060" stroke-width="4" stroke-linecap="round"/>')
+    s.shape('path', {'d': f'M70 {b + 2} Q72 {b - 8} 120 {b - 8} Q168 {b - 8} 170 {b + 2} Q168 {b + 10} 120 {b + 10} Q72 {b + 10} 70 {b + 2} Z'}, '#2B2340')
+    s.raw('</g>')
     return s
 
 
@@ -448,9 +470,9 @@ def straw(prefix, who):
     b = BRIM[who] + 2
     s.shape('ellipse', {'cx': 120, 'cy': b, 'rx': 64, 'ry': 13}, '#F2CF6B', '#C9A443', (0, -5))
     s.raw(''.join(f'<path d="M{120 + k} {b - 9 + abs(k) / 9:.1f} L{120 + k * 1.25:.1f} {b + 10 - abs(k) / 10:.1f}" stroke="#C9A443" stroke-width="1.5"/>' for k in range(-48, 50, 12)))
-    s.shape('path', {'d': f'M86 {b + 2} C84 {b - 42} 156 {b - 42} 154 {b + 2} Z'}, '#F2CF6B', '#C9A443', (-6, 4))
-    s.shape('path', {'d': f'M87 {b - 10} Q120 {b - 16} 153 {b - 10} L154 {b + 1} Q120 {b - 5} 86 {b + 1} Z'}, '#22B8C8')
-    s.raw(flower(146, b - 6, 4.5, '#FF7AB2', sw=1.4))
+    s.shape('path', {'d': f'M80 {b + 2} C78 {b - 48} 162 {b - 48} 160 {b + 2} Z'}, '#F2CF6B', '#C9A443', (-6, 4))
+    s.shape('path', {'d': f'M81 {b - 11} Q120 {b - 18} 159 {b - 11} L160 {b + 1} Q120 {b - 6} 80 {b + 1} Z'}, '#22B8C8')
+    s.raw(flower(150, b - 6, 5, '#FF7AB2', sw=1.4))
     return s
 
 
@@ -519,9 +541,10 @@ def peace(prefix, who):
 
 def bowtie(prefix, who):
     s = Svg(prefix)
-    s.shape('path', {'d': 'M120 148 L103 139 L103 157 Z'}, '#D7263D', '#A01828', (3, 0))
-    s.shape('path', {'d': 'M120 148 L137 139 L137 157 Z'}, '#D7263D', '#A01828', (-3, 0))
-    s.shape('rect', {'x': 114.5, 'y': 142.5, 'width': 11, 'height': 11, 'rx': 2.5}, '#A01828')
+    s.shape('path', {'d': 'M120 148 C112 139 103 135 101 140 C99 145 99 151 101 156 C103 161 112 157 120 148 Z'}, '#D7263D', '#A01828', (3, 0))
+    s.shape('path', {'d': 'M120 148 C128 139 137 135 139 140 C141 145 141 151 139 156 C137 161 128 157 120 148 Z'}, '#D7263D', '#A01828', (-3, 0))
+    s.raw('<path d="M106 143 Q110 148 106 153 M134 143 Q130 148 134 153" stroke="#A01828" stroke-width="1.8" fill="none" stroke-linecap="round"/>')
+    s.shape('ellipse', {'cx': 120, 'cy': 148, 'rx': 5, 'ry': 6}, '#A01828')
     return s
 
 
@@ -555,13 +578,15 @@ def lei(prefix, who):
 
 # ---------------------------------------------------------------- weitere Westen
 
-def vest_pattern(prefix, who, color, shade, pattern):
+def vest_pattern(prefix, who, color, shade, pattern, lapel=None):
     """Weste mit Muster (pattern bekommt die Svg, linke und rechte Form, Unterkante)."""
     s = Svg(prefix)
     left, right, bottom = VEST_PANELS[who]
     s.shape('path', {'d': left}, color, shade, (5, -4))
     s.shape('path', {'d': right}, color, shade, (-5, -4))
     pattern(s, left, right, bottom)
+    if lapel:
+        lapels(s, lapel)
     return s
 
 
@@ -581,7 +606,6 @@ def space_pattern(s, left, right, bottom):
 
 
 def tux_pattern(s, left, right, bottom):
-    s.raw(f'<path d="M110 133 L100 160 L104 133 Z M130 133 L140 160 L136 133 Z" fill="#4A4060" stroke="{OUT}" stroke-width="2" stroke-linejoin="round"/>')
     s.raw(f'<circle cx="104" cy="{bottom - 30}" r="2.2" fill="#C9CAD8"/><circle cx="104" cy="{bottom - 18}" r="2.2" fill="#C9CAD8"/>')
     s.raw(f'<path d="M140 150 L146 148 L146 154 Z" fill="#F4F2FF" stroke="{OUT}" stroke-width="1.2"/>')
 
@@ -592,8 +616,6 @@ def studded_pattern(s, left, right, bottom):
         s.raw(f'<path d="M{240 - x - 3} 138 L{240 - x} 128 L{240 - x + 3} 138 Z" fill="#C9CAD8" stroke="{OUT}" stroke-width="1.6" stroke-linejoin="round"/>')
     for y in range(146, bottom - 6, 10):
         s.raw(f'<circle cx="{98 - (y - 132) * 0.08:.1f}" cy="{y}" r="1.7" fill="#C9CAD8"/><circle cx="{142 + (y - 132) * 0.08:.1f}" cy="{y}" r="1.7" fill="#C9CAD8"/>')
-    s.raw(f'<rect x="137" y="{bottom - 30}" width="12" height="12" rx="2" fill="#E23D3D" stroke="{OUT}" stroke-width="1.6"/>')
-    s.raw(f'<path d="M140 {bottom - 27} L146 {bottom - 21} M146 {bottom - 27} L140 {bottom - 21}" stroke="{OUT}" stroke-width="1.6"/>')
 
 
 def hawaii_pattern(s, left, right, bottom):
@@ -664,10 +686,10 @@ def guitar_archtop(prefix):
 def guitar_vshape(prefix):
     s = Svg(prefix)
     neck(s, '#15121F', pointy=True)
-    d = 'M142 203 L62 178 L54 193 L104 211 L54 229 L62 244 L142 219 Z'
-    s.shape('path', {'d': d}, '#2B2340', '#1A1428', (-6, -6))
-    s.raw(f'<path d="M66 186 L120 204 M66 236 L120 218" stroke="#C9CAD8" stroke-width="3"/>')
-    s.raw(f'<path d="M128 199 L118 211 L126 211 L118 223 L134 208 L126 208 Z" fill="#FFC233" stroke="{OUT}" stroke-width="1.5" stroke-linejoin="round"/>')
+    d = 'M142 202 L64 173 L52 190 L100 211 L52 232 L64 249 L142 220 Z'
+    s.shape('path', {'d': d}, '#C9CFE0', '#9AA2BA', (-6, -6))
+    s.raw(f'<path d="M140 205 L104 211 L140 217 Z" fill="#2B2340" stroke="{OUT}" stroke-width="2" stroke-linejoin="round"/>')
+    s.raw(f'<path d="M126 200 L117 211 L124 211 L117 222 L132 208 L125 208 Z" fill="#FFC233" stroke="{OUT}" stroke-width="1.5" stroke-linejoin="round"/>')
     s.raw(f'<rect x="108" y="204" width="7" height="14" rx="2" fill="{OUT}"/>')
     s.raw('<path d="M108 209 L232 209 M108 213 L232 213" stroke="#F4F2FF" stroke-width="1.2"/>')
     return s
@@ -738,10 +760,10 @@ BODY_ITEMS.update({
     'neck_chain': ('neck', chain),
     'neck_lei': ('neck', lei),
     'vest_fringe': ('vest', lambda p, w: vest_pattern(p, w, '#A0612F', '#7A4520', fringe_pattern)),
-    'vest_space': ('vest', lambda p, w: vest_pattern(p, w, '#C9CFE0', '#9AA2BA', space_pattern)),
-    'vest_tux': ('vest', lambda p, w: vest_pattern(p, w, '#2B2340', '#1A1428', tux_pattern)),
-    'vest_studded': ('vest', lambda p, w: vest_pattern(p, w, '#1E1A26', '#0E0B14', studded_pattern)),
-    'vest_hawaii': ('vest', lambda p, w: vest_pattern(p, w, '#22B8C8', '#178A96', hawaii_pattern)),
+    'vest_space': ('vest', lambda p, w: vest_pattern(p, w, '#C9CFE0', '#9AA2BA', space_pattern, lapel='#3FE0E0')),
+    'vest_tux': ('vest', lambda p, w: vest_pattern(p, w, '#2B2340', '#1A1428', tux_pattern, lapel='#4A4060')),
+    'vest_studded': ('vest', lambda p, w: vest_pattern(p, w, '#1E1A26', '#0E0B14', studded_pattern, lapel='#3A3448')),
+    'vest_hawaii': ('vest', lambda p, w: vest_pattern(p, w, '#22B8C8', '#178A96', hawaii_pattern, lapel='#F4F2FF')),
 })
 
 
@@ -845,8 +867,299 @@ def template(who):
             + f'<g transform="{head_t}">{scaled(head.body, HEAD_SCALE)}</g></svg>')
 
 
+# Hüte, unter denen Fuzz die flache Frisur bekommt (sonst stechen die Stacheln heraus).
+COVERING = {'hat_beanie', 'hat_cap', 'hat_cowboy', 'hat_tophat', 'hat_viking', 'hat_straw'}
+# Halsschmuck, unter dem das Bild auf dem Shirt (Stern, Blitz) verschwindet.
+HIDES_LOGO = {'neck_scarf', 'neck_peace', 'neck_chain'}
+
+
+# ================================================================ Erweiterung 2: Winter, Disco, Pirat, Magie
+
+def star_path(cx, cy, ro, ri, rot=-90):
+    import math
+    pts = []
+    for i in range(10):
+        r = ro if i % 2 == 0 else ri
+        a = math.radians(rot + i * 36)
+        pts.append(f'{cx + r * math.cos(a):.1f} {cy + r * math.sin(a):.1f}')
+    return 'M' + ' L'.join(pts) + ' Z'
+
+
+# ---------------------------------------------------------------- Kopf
+
+def earmuffs(prefix, who):
+    s = Svg(prefix)
+    s.raw(f'<path d="M70 96 C62 30 178 30 170 96" fill="none" stroke="{OUT}" stroke-width="11" stroke-linecap="round"/>')
+    s.raw(f'<path d="M70 96 C62 30 178 30 170 96" fill="none" stroke="#5BB8F0" stroke-width="5" stroke-linecap="round"/>')
+    for cx in (68, 172):
+        s.shape('circle', {'cx': cx, 'cy': 98, 'r': 15}, '#F4F2FF', '#C9C6E0', (-4, -3))
+        s.raw(''.join(f'<circle cx="{cx + dx}" cy="{98 + dy}" r="2.2" fill="#C9C6E0"/>' for dx, dy in ((-5, -5), (5, -3), (-2, 5), (6, 6))))
+    return s
+
+
+def cat_ears(prefix, who):
+    s = Svg(prefix)
+    s.raw(f'<path d="M72 74 C70 30 170 30 168 74" fill="none" stroke="{OUT}" stroke-width="9" stroke-linecap="round"/>')
+    s.raw('<path d="M72 74 C70 30 170 30 168 74" fill="none" stroke="#2B2340" stroke-width="4" stroke-linecap="round"/>')
+    for flip in (1, -1):
+        x = lambda v: 120 + flip * (v - 120)
+        s.shape('path', {'d': f'M{x(78)} 52 L{x(80)} 14 L{x(108)} 38 Z'}, '#2B2340', '#1A1428', (flip * 3, 2))
+        s.raw(f'<path d="M{x(84)} 46 L{x(85)} 24 L{x(101)} 38 Z" fill="#FF8AB8"/>')
+    return s
+
+
+def afro(prefix, who):
+    """Disco-Perücke: lauter runde Locken, aussen eine gemeinsame Kontur."""
+    s = Svg(prefix)
+    blobs = ((68, 94, 16), (62, 70, 18), (72, 44, 20), (94, 26, 21), (120, 20, 22), (146, 26, 21), (168, 44, 20), (178, 70, 18), (172, 94, 16),
+             (96, 50, 20), (120, 44, 22), (144, 50, 20))
+    s.raw(''.join(f'<circle cx="{x}" cy="{y}" r="{r}" fill="{OUT}" stroke="{OUT}" stroke-width="{2 * W}"/>' for x, y, r in blobs))
+    s.raw(''.join(f'<circle cx="{x}" cy="{y}" r="{r}" fill="#FF5CA8"/>' for x, y, r in blobs))
+    s.raw(''.join(f'<path d="M{x - r * .55:.1f} {y + r * .35:.1f} A{r * .65:.1f} {r * .65:.1f} 0 0 0 {x + r * .55:.1f} {y + r * .35:.1f}" stroke="#D93A86" stroke-width="3" fill="none" stroke-linecap="round"/>' for x, y, r in blobs[:9]))
+    s.raw(''.join(f'<circle cx="{x}" cy="{y}" r="{r}" fill="#FF9CCB"/>' for x, y, r in ((88, 20, 4), (116, 12, 4.5), (150, 18, 4), (64, 58, 3.5), (172, 36, 3.5))))
+    s.raw(f'<path d="M154 14 L160 40" stroke="{OUT}" stroke-width="3.5" stroke-linecap="round"/>'
+          f'<rect x="150" y="34" width="18" height="10" rx="3" fill="#FFC233" stroke="{OUT}" stroke-width="2" transform="rotate(12 159 39)"/>')
+    return s
+
+
+def pirate_hat(prefix, who):
+    s = Svg(prefix)
+    b = BRIM[who] + 4
+    d = f'M54 {b} Q66 {b - 34} 120 {b - 42} Q174 {b - 34} 186 {b} Q154 {b - 12} 120 {b - 8} Q86 {b - 12} 54 {b} Z'
+    s.shape('path', {'d': d}, '#2B2340', '#1A1428', (-7, 5))
+    s.raw(f'<path d="M58 {b - 2} Q86 {b - 14} 120 {b - 10} Q154 {b - 14} 182 {b - 2}" stroke="#E0B84A" stroke-width="3" fill="none"/>')
+    y = b - 26
+    s.raw(f'<path d="M108 {y + 10} L132 {y + 2} M108 {y + 2} L132 {y + 10}" stroke="#F4F2FF" stroke-width="4" stroke-linecap="round"/>')
+    s.raw(f'<circle cx="120" cy="{y - 2}" r="8" fill="#F4F2FF" stroke="{OUT}" stroke-width="2"/>'
+          f'<circle cx="117" cy="{y - 3}" r="1.8" fill="{OUT}"/><circle cx="123" cy="{y - 3}" r="1.8" fill="{OUT}"/>'
+          f'<path d="M117 {y + 2} L123 {y + 2}" stroke="{OUT}" stroke-width="1.6"/>')
+    return s
+
+
+def wizard(prefix, who):
+    s = Svg(prefix)
+    b = BRIM[who]
+    cone = f'M80 {b} C92 {b - 30} 112 {b - 60} 130 {b - 78} Q146 {b - 88} 156 {b - 76} Q142 {b - 74} 140 {b - 60} C146 {b - 36} 154 {b - 16} 160 {b} Z'
+    s.shape('path', {'d': cone}, '#2F3C9E', '#1F2878', (-7, 4))
+    s.raw(f'<path d="{star_path(112, b - 26, 7, 3)}" fill="#FFC233" stroke="{OUT}" stroke-width="1.6" stroke-linejoin="round"/>')
+    s.raw(f'<path d="{star_path(136, b - 44, 5, 2.2)}" fill="#FFC233" stroke="{OUT}" stroke-width="1.4" stroke-linejoin="round"/>')
+    s.raw(f'<path d="M134 {b - 20} A8 8 0 1 0 142 {b - 8} A6 6 0 1 1 134 {b - 20} Z" fill="#F2E6C8" stroke="{OUT}" stroke-width="1.6"/>')
+    s.shape('circle', {'cx': 157, 'cy': b - 76, 'r': 5}, '#FFC233')
+    s.shape('path', {'d': f'M58 {b + 2} Q60 {b - 8} 120 {b - 8} Q180 {b - 8} 182 {b + 2} Q178 {b + 11} 120 {b + 10} Q62 {b + 11} 58 {b + 2} Z'}, '#2F3C9E', '#1F2878', (0, -4))
+    return s
+
+
+# ---------------------------------------------------------------- Brillen
+
+def skigoggles(prefix, who):
+    s = Svg(prefix)
+    s.raw(f'<path d="M66 92 L82 92 M158 92 L174 92" stroke="{OUT}" stroke-width="10" stroke-linecap="round"/>'
+          '<path d="M66 92 L82 92 M158 92 L174 92" stroke="#FF5CA8" stroke-width="5" stroke-linecap="round"/>')
+    lens = 'M80 86 Q80 78 92 78 L148 78 Q160 78 160 86 L160 102 Q160 112 148 112 L130 112 Q120 104 110 112 L92 112 Q80 112 80 102 Z'
+    s.raw(f'<path d="{lens}" fill="#F4F2FF" stroke="{OUT}" stroke-width="{W}" stroke-linejoin="round"/>')
+    inner = 'M85 88 Q85 83 93 83 L147 83 Q155 83 155 88 L155 101 Q155 107 147 107 L131 107 Q120 99 109 107 L93 107 Q85 107 85 101 Z'
+    s.raw(f'<path d="{inner}" fill="#FF9A3D"/>')
+    clipped(s, inner, '<rect x="80" y="95" width="80" height="20" fill="#B048E0"/>', f'{prefix}cl')
+    s.raw('<path d="M92 88 L110 88" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".85"/>')
+    return s
+
+
+def discoglasses(prefix, who):
+    s = Svg(prefix)
+    for cx in (100, 140):
+        s.raw(f'<rect x="{cx - 18}" y="82" width="36" height="28" rx="11" fill="#B48CFF" fill-opacity=".45" stroke="{OUT}" stroke-width="7"/>')
+        s.raw(f'<rect x="{cx - 18}" y="82" width="36" height="28" rx="11" fill="none" stroke="#FFC233" stroke-width="3.2"/>')
+        s.raw(f'<path d="M{cx - 10} 89 L{cx - 2} 89" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>')
+    s.raw(f'<path d="M80 92 L70 88 M160 92 L170 88" stroke="{OUT}" stroke-width="4" stroke-linecap="round"/>')
+    return s
+
+
+def eyepatch(prefix, who):
+    s = Svg(prefix)
+    s.raw(f'<path d="M70 78 L128 90 M150 98 L170 104" stroke="{OUT}" stroke-width="3.2" stroke-linecap="round"/>')
+    s.shape('path', {'d': 'M126 86 Q139 80 152 86 Q156 100 146 110 Q139 114 132 110 Q122 100 126 86 Z'}, '#2B2340', '#1A1428', (-3, -3))
+    s.raw('<path d="M133 92 L145 92" stroke="#4A4060" stroke-width="2.4" stroke-linecap="round"/>')
+    return s
+
+
+def heromask(prefix, who):
+    s = Svg(prefix)
+    hole = lambda cx: f'M{cx - 11} 95 A11 12 0 1 0 {cx + 11} 95 A11 12 0 1 0 {cx - 11} 95 Z'
+    d = 'M72 90 Q78 76 100 79 Q114 82 120 88 Q126 82 140 79 Q162 76 168 90 Q170 108 148 110 Q130 110 120 102 Q110 110 92 110 Q70 108 72 90 Z'
+    s.raw(f'<path d="{d} {hole(101)} {hole(139)}" fill="#E23D3D" fill-rule="evenodd" stroke="{OUT}" stroke-width="{W}" stroke-linejoin="round"/>')
+    s.raw(f'<path d="M64 88 L74 92 M176 88 L166 92" stroke="{OUT}" stroke-width="4" stroke-linecap="round"/>')
+    return s
+
+
+# ---------------------------------------------------------------- Hals
+
+def knitscarf(prefix, who):
+    s = Svg(prefix)
+    s.shape('path', {'d': 'M128 144 L141 144 L146 184 L132 186 Z'}, '#E23D3D', '#B52530', (-3, 0))
+    s.raw(''.join(f'<path d="M{129 + i * 0.6:.1f} {152 + i * 10} L{142 + i * 1.1:.1f} {152 + i * 10}" stroke="#F4F2FF" stroke-width="3"/>' for i in range(3)))
+    s.raw(''.join(f'<path d="M{x} 185 L{x} 192" stroke="{OUT}" stroke-width="4" stroke-linecap="round"/><path d="M{x} 185 L{x} 192" stroke="#E23D3D" stroke-width="2" stroke-linecap="round"/>' for x in (134, 139, 144)))
+    s.shape('path', {'d': 'M96 136 Q120 148 144 136 L146 146 Q120 160 94 146 Z'}, '#E23D3D', '#B52530', (0, -3))
+    s.raw('<path d="M100 142 Q120 153 140 142" stroke="#F4F2FF" stroke-width="3" fill="none"/>')
+    return s
+
+
+def medallion(prefix, who):
+    s = Svg(prefix)
+    s.raw('<path d="M104 135 L120 156 L136 135" stroke="#E0B84A" stroke-width="2.4" fill="none"/>')
+    s.shape('circle', {'cx': 120, 'cy': 164, 'r': 11}, '#E0B84A', '#B8902A', (-3, -3))
+    s.raw(f'<path d="{star_path(120, 164, 6.5, 2.8)}" fill="#FFF3B0" stroke="{OUT}" stroke-width="1.4" stroke-linejoin="round"/>')
+    return s
+
+
+def amulet(prefix, who):
+    s = Svg(prefix)
+    s.raw('<path d="M104 135 Q120 158 136 135" stroke="#7A4A2A" stroke-width="2.4" fill="none"/>')
+    s.shape('path', {'d': 'M120 150 L130 161 L120 175 L110 161 Z'}, '#B048E0', '#8A2EB8', (-3, -2))
+    s.raw(f'<path d="M120 150 L130 161 L120 175 L110 161 Z" fill="none" stroke="#E0B84A" stroke-width="2"/>'
+          '<path d="M116 158 L120 154" stroke="#fff" stroke-width="2" stroke-linecap="round"/>')
+    return s
+
+
+def neckphones(prefix, who):
+    """Kopfhörer um den Hals: die Muscheln liegen links und rechts am Hals."""
+    s = Svg(prefix)
+    s.raw(f'<path d="M104 146 Q120 162 136 146" fill="none" stroke="{OUT}" stroke-width="8" stroke-linecap="round"/>'
+          '<path d="M104 146 Q120 162 136 146" fill="none" stroke="#2B2340" stroke-width="3.5" stroke-linecap="round"/>')
+    for cx, rot in ((104, 28), (136, -28)):
+        s.raw(f'<g transform="rotate({rot} {cx} 148)">')
+        s.shape('rect', {'x': cx - 9, 'y': 137, 'width': 18, 'height': 22, 'rx': 8}, '#E23D3D', '#B52530', (-2, -2))
+        s.raw(f'<rect x="{cx - 3}" y="142" width="6" height="12" rx="2.5" fill="#F4F2FF"/></g>')
+    return s
+
+
+# ---------------------------------------------------------------- Westen
+
+def puffer_pattern(s, left, right, bottom):
+    for i, d in enumerate((left, right)):
+        clipped(s, d, ''.join(f'<path d="M78 {y} Q100 {y + 4} 162 {y}" stroke="#3A8FC4" stroke-width="2.4" fill="none"/>' for y in range(146, bottom, 11)), f'{s.prefix}cl{i}')
+        s.raw(f'<path d="{d}" fill="none" stroke="{OUT}" stroke-width="{W}" stroke-linejoin="round"/>')
+
+
+def sequin_pattern(s, left, right, bottom):
+    import random
+    rnd = random.Random(7)
+    dots = ''.join(f'<circle cx="{rnd.uniform(80, 160):.1f}" cy="{rnd.uniform(132, bottom):.1f}" r="{rnd.choice((1.2, 1.6, 2))}" fill="{rnd.choice(("#FFF3B0", "#fff", "#C8901A"))}"/>' for _ in range(90))
+    for i, d in enumerate((left, right)):
+        clipped(s, d, dots, f'{s.prefix}cl{i}')
+        s.raw(f'<path d="{d}" fill="none" stroke="{OUT}" stroke-width="{W}" stroke-linejoin="round"/>')
+
+
+def pirate_pattern(s, left, right, bottom):
+    s.raw(f'<path d="M109 133 L103 {bottom - 2} M131 133 L137 {bottom - 2}" stroke="#E0B84A" stroke-width="3"/>')
+    for y in range(150, bottom - 8, 16):
+        s.raw(f'<circle cx="{98 - (y - 132) * 0.05:.1f}" cy="{y}" r="2.8" fill="#E0B84A" stroke="{OUT}" stroke-width="1.3"/>'
+              f'<circle cx="{142 + (y - 132) * 0.05:.1f}" cy="{y}" r="2.8" fill="#E0B84A" stroke="{OUT}" stroke-width="1.3"/>')
+
+
+def robe_pattern(s, left, right, bottom):
+    inner = ''.join(f'<path d="{star_path(x, y, r, r * 0.45)}" fill="#FFC233"/>' for x, y, r in
+                    ((92, 150, 3.5), (100, 172, 2.6), (90, 196, 3.2), (98, 214, 2.4), (146, 148, 3.2), (140, 170, 2.4), (150, 190, 3.5), (142, 214, 2.6)))
+    inner += ''.join(f'<circle cx="{x}" cy="{y}" r="1.1" fill="#fff"/>' for x, y in ((96, 160), (88, 182), (104, 204), (144, 160), (150, 204), (138, 182)))
+    for i, d in enumerate((left, right)):
+        clipped(s, d, inner, f'{s.prefix}cl{i}')
+        s.raw(f'<path d="{d}" fill="none" stroke="{OUT}" stroke-width="{W}" stroke-linejoin="round"/>')
+
+
+# ---------------------------------------------------------------- Gitarren
+
+def guitar_ice(prefix):
+    s = Svg(prefix)
+    neck(s, '#EAF6FF')
+    s.shape('path', {'d': DOUBLE}, '#EAF6FF', '#B9D8EE', (-8, -6))
+    flake = lambda cx, cy, r: (f'<path d="M{cx - r} {cy} L{cx + r} {cy} M{cx} {cy - r} L{cx} {cy + r} M{cx - r * .7:.1f} {cy - r * .7:.1f} L{cx + r * .7:.1f} {cy + r * .7:.1f} '
+                               f'M{cx - r * .7:.1f} {cy + r * .7:.1f} L{cx + r * .7:.1f} {cy - r * .7:.1f}" stroke="#5BB8F0" stroke-width="1.8" stroke-linecap="round"/>')
+    s.raw(flake(80, 200, 6) + flake(88, 226, 4.5) + flake(124, 224, 4))
+    s.raw(f'<path d="M74 214 C84 222 100 226 112 220 L106 208 C96 214 84 214 74 214 Z" fill="#5BB8F0" stroke="{OUT}" stroke-width="2.5"/>')
+    pickups(s)
+    s.raw('<path d="M84 209 L232 209 M84 213 L232 213" stroke="#7A8AA0" stroke-width="1.2"/>')
+    return s
+
+
+def guitar_mirror(prefix):
+    s = Svg(prefix)
+    neck(s, '#C9CFE0')
+    s.shape('path', {'d': DOUBLE}, '#C9CFE0', '#9AA2BA', (-8, -6))
+    tiles = ''.join(f'<path d="M{x} 180 L{x} 240" stroke="#9AA2BA" stroke-width="1.4"/>' for x in range(64, 142, 7))
+    tiles += ''.join(f'<path d="M60 {y} L142 {y}" stroke="#9AA2BA" stroke-width="1.4"/>' for y in range(184, 240, 7))
+    tiles += ''.join(f'<rect x="{x}" y="{y}" width="6" height="6" fill="{c}"/>' for x, y, c in ((71, 199, '#fff'), (92, 192, '#FF9CCB'), (113, 220, '#9BE7FF'), (78, 220, '#fff'), (120, 199, '#FFF3B0'), (99, 227, '#fff')))
+    clipped(s, DOUBLE, tiles, f'{prefix}cl')
+    s.raw(f'<path d="{DOUBLE}" fill="none" stroke="{OUT}" stroke-width="{W}" stroke-linejoin="round"/>')
+    pickups(s)
+    strings(s)
+    return s
+
+
+def guitar_magic(prefix):
+    s = Svg(prefix)
+    neck(s, '#FFC233', pointy=True)
+    s.shape('path', {'d': POINTY}, '#6A48C9', '#4A2E9A', (-8, -6))
+    inner = (f'<path d="M84 196 A12 12 0 1 0 96 210 A9 9 0 1 1 84 196 Z" fill="#F2E6C8"/>'
+             + ''.join(f'<path d="{star_path(x, y, r, r * 0.45)}" fill="#FFC233"/>' for x, y, r in ((72, 222, 4), (114, 202, 3.2), (120, 222, 2.6))))
+    clipped(s, POINTY, inner, f'{prefix}cl')
+    s.raw(f'<path d="{POINTY}" fill="none" stroke="{OUT}" stroke-width="{W}" stroke-linejoin="round"/>')
+    pickups(s)
+    strings(s)
+    return s
+
+
+def amp_disco(prefix):
+    s = Svg(prefix)
+    s.shape('rect', {'x': 182, 'y': 236, 'width': 80, 'height': 60, 'rx': 8}, '#FF5CA8', '#D93A86', (-5, -4))
+    s.shape('rect', {'x': 190, 'y': 252, 'width': 64, 'height': 36, 'rx': 4}, '#2B2340')
+    s.raw(''.join(f'<circle cx="{x}" cy="{y}" r="2.2" fill="{c}"/>' for x, y, c in ((200, 262, '#FFC233'), (214, 270, '#3FE0E0'), (230, 260, '#fff'), (244, 276, '#FFC233'), (206, 280, '#fff'), (236, 282, '#3FE0E0'))))
+    s.raw(''.join(f'<circle cx="{x}" cy="244" r="2.6" fill="#FFF3B0" stroke="{OUT}" stroke-width="1.2"/>' for x in (194, 204, 214)))
+    s.raw(f'<path d="M222 236 L222 222" stroke="{OUT}" stroke-width="2.5"/>')
+    s.shape('circle', {'cx': 222, 'cy': 212, 'r': 12}, '#C9CFE0', '#9AA2BA', (-3, -3))
+    s.raw(f'<path d="M210 208 L234 208 M210 216 L234 216 M216 201 L216 223 M224 200 L224 224" stroke="#9AA2BA" stroke-width="1.2"/>'
+          '<rect x="214" y="204" width="4" height="4" fill="#fff"/><rect x="226" y="212" width="4" height="4" fill="#FF9CCB"/>')
+    return s
+
+
+GUITARS.update({
+    'g_ice': lambda: guitar_ice('gi'),
+    'g_mirror': lambda: guitar_mirror('gm'),
+    'g_wood': lambda: acoustic_generic('gw', '#5A2E14', '#3E1C0A', '#E0B84A', head='#3E1C0A', body=BIG_BODY,
+                                       extra=f'<path d="M80 224 L80 232 M76 228 L84 228" stroke="#E0B84A" stroke-width="2.4" stroke-linecap="round"/>'),
+    'g_magic': lambda: guitar_magic('gmg'),
+})
+ACOUSTIC_GUITARS |= {'g_wood'}
+
+AMPS['amp_disco'] = lambda: amp_disco('ad')
+
+HEAD_ITEMS.update({
+    'hat_earmuffs': ('hat', earmuffs),
+    'hat_cat': ('hat', cat_ears),
+    'hat_afro': ('hat', afro),
+    'hat_pirate': ('hat', pirate_hat),
+    'hat_wizard': ('hat', wizard),
+    'glasses_ski': ('glasses', skigoggles),
+    'glasses_disco': ('glasses', discoglasses),
+    'glasses_patch': ('glasses', eyepatch),
+    'glasses_mask': ('glasses', heromask),
+})
+BODY_ITEMS.update({
+    'neck_knitscarf': ('neck', knitscarf),
+    'neck_medallion': ('neck', medallion),
+    'neck_amulet': ('neck', amulet),
+    'neck_phones': ('neck', neckphones),
+    'vest_puffer': ('vest', lambda p, w: vest_pattern(p, w, '#5BB8F0', '#3A8FC4', puffer_pattern, lapel='#F4F2FF')),
+    'vest_sequin': ('vest', lambda p, w: vest_pattern(p, w, '#E0B84A', '#B8902A', sequin_pattern, lapel='#FF5CA8')),
+    'vest_pirate': ('vest', lambda p, w: vest_pattern(p, w, '#C8283A', '#9A1C2C', pirate_pattern, lapel='#2B2340')),
+    'vest_robe': ('vest', lambda p, w: vest_pattern(p, w, '#2F3C9E', '#1F2878', robe_pattern, lapel='#B048E0')),
+})
+COVERING |= {'hat_earmuffs', 'hat_cat', 'hat_afro', 'hat_pirate', 'hat_wizard'}
+HIDES_LOGO |= {'neck_medallion', 'neck_amulet', 'neck_phones'}
+
+
 def items():
-    out = {'guitars': {}, 'amps': {}, 'luna': {}, 'fuzz': {}}
+    out = {'guitars': {}, 'amps': {}, 'luna': {}, 'fuzz': {}, 'hathair': {}}
+    hh = fuzz_hat_hair('fhh')
+    out['hathair']['fuzz'] = {'defs': ''.join(hh.defs), 'svg': scaled(hh.body, HEAD_SCALE)}
     for gid, fn in GUITARS.items():
         s = fn()
         out['guitars'][gid] = {'defs': ''.join(s.defs), 'svg': scaled(s.body, BODY_SCALE),
@@ -858,9 +1171,13 @@ def items():
         for iid, (slot, fn) in HEAD_ITEMS.items():
             s = fn(f'{iid}_{who[0]}_', who)
             out[who][iid] = {'slot': slot, 'defs': ''.join(s.defs), 'svg': scaled(s.body, HEAD_SCALE)}
+            if iid in COVERING:
+                out[who][iid]['covers'] = True
         for iid, (slot, fn) in BODY_ITEMS.items():
             s = fn(f'{iid}_{who[0]}_', who)
             out[who][iid] = {'slot': slot, 'defs': ''.join(s.defs), 'svg': scaled(s.body, BODY_SCALE)}
+            if iid in HIDES_LOGO:
+                out[who][iid]['hidesLogo'] = True
     return out
 
 
@@ -888,6 +1205,12 @@ def render(who, tpl, its, look=None):
             svg = svg.replace(f'<!--slot:{slot}-->', it['svg'])
             if slot == 'hat':
                 svg = re.sub(r'<!--slot:hairclip-->.*?<!--/slot:hairclip-->', '', svg, flags=re.S)
+                hh = its['hathair'].get(who)
+                if it.get('covers') and hh:
+                    defs.append(hh['defs'])
+                    svg = re.sub(r'<!--slot:hairtop-->.*?<!--/slot:hairtop-->', lambda m: hh['svg'], svg, flags=re.S)
+            if it.get('hidesLogo'):
+                svg = re.sub(r'<!--slot:logo-->.*?<!--/slot:logo-->', '', svg, flags=re.S)
     return svg.replace('<!--defs-->', ''.join(defs))
 
 
@@ -908,18 +1231,22 @@ def main():
     if len(sys.argv) > 2:
         prev = sys.argv[2]
         os.makedirs(prev, exist_ok=True)
+        # Ein Bild pro Set (wie Shop.sets), dazu die Startgitarre.
         looks = [
-            {},
             {'guitar': 'g_classic'},
-            {'hat': 'hat_cowboy', 'vest': 'vest_fringe', 'neck': 'neck_scarf', 'guitar': 'g_jumbo'},
+            {'hat': 'hat_cap', 'glasses': 'glasses_nerd', 'vest': 'vest_jeans', 'amp': 'amp_retro'},
+            {'hat': 'hat_straw', 'glasses': 'glasses_heart', 'neck': 'neck_lei', 'vest': 'vest_hawaii'},
             {'hat': 'hat_flowers', 'glasses': 'glasses_round', 'neck': 'neck_peace', 'guitar': 'g_flower'},
+            {'hat': 'hat_cowboy', 'neck': 'neck_scarf', 'vest': 'vest_fringe', 'guitar': 'g_jumbo'},
+            {'hat': 'hat_tophat', 'neck': 'neck_bowtie', 'vest': 'vest_tux', 'guitar': 'g_archtop'},
+            {'hat': 'hat_viking', 'neck': 'neck_chain', 'vest': 'vest_studded', 'guitar': 'g_vshape', 'amp': 'amp_stack'},
             {'glasses': 'glasses_visor', 'vest': 'vest_space', 'guitar': 'g_galaxy', 'amp': 'amp_space'},
-            {'hat': 'hat_tophat', 'neck': 'neck_bowtie', 'vest': 'vest_tux', 'guitar': 'g_archtop', 'amp': 'amp_combo'},
-            {'hat': 'hat_viking', 'vest': 'vest_studded', 'neck': 'neck_chain', 'guitar': 'g_vshape', 'amp': 'amp_stack'},
-            {'hat': 'hat_straw', 'glasses': 'glasses_heart', 'neck': 'neck_lei', 'vest': 'vest_hawaii', 'guitar': 'g_acoustic_black'},
-            {'hat': 'hat_cap', 'glasses': 'glasses_nerd', 'vest': 'vest_jeans', 'guitar': 'g_flame', 'amp': 'amp_retro'},
-            {'guitar': 'g_double_blue', 'amp': 'amp_mini'},
-            {'guitar': 'g_pointy_pink', 'hat': 'hat_crown', 'glasses': 'glasses_star', 'vest': 'vest_leather'},
+            {'hat': 'hat_pirate', 'glasses': 'glasses_patch', 'vest': 'vest_pirate', 'guitar': 'g_wood'},
+            {'hat': 'hat_earmuffs', 'glasses': 'glasses_ski', 'neck': 'neck_knitscarf', 'vest': 'vest_puffer', 'guitar': 'g_ice'},
+            {'hat': 'hat_wizard', 'neck': 'neck_amulet', 'vest': 'vest_robe', 'guitar': 'g_magic'},
+            {'hat': 'hat_afro', 'glasses': 'glasses_disco', 'neck': 'neck_medallion', 'vest': 'vest_sequin', 'guitar': 'g_mirror', 'amp': 'amp_disco'},
+            {'hat': 'hat_crown', 'glasses': 'glasses_star', 'vest': 'vest_leather', 'guitar': 'g_star'},
+            {'hat': 'hat_cat', 'glasses': 'glasses_mask', 'neck': 'neck_phones'},
         ]
         for who in ('luna', 'fuzz'):
             tpl = template(who)
