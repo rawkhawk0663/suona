@@ -6,13 +6,17 @@ import '../../app/l10n.dart';
 import '../../app/theme.dart';
 import '../../app/version.dart';
 import '../../core/game/adventure.dart';
+import '../../core/game/chord_adventure.dart';
 import '../../core/game/difficulty.dart';
+import '../../core/game/note_stats.dart';
+import '../../core/music/chords.dart';
 import '../../core/game/question.dart';
 import '../../core/music/curriculum.dart';
 import '../../core/music/note_names.dart';
 import '../../core/profiles/profile.dart';
 import '../../core/suona_state.dart';
 import '../../widgets/stage.dart';
+import 'chord_curriculum_editor.dart';
 import 'curriculum_editor.dart';
 import 'mic_test.dart';
 import 'privacy.dart';
@@ -120,6 +124,7 @@ class _ProfileCard extends StatelessWidget {
                     PopupMenuItem(value: 'character', child: Text(tr('Figur wechseln', 'Switch character'))),
                     PopupMenuItem(value: 'reset', child: Text(tr('Lernstand zurücksetzen', 'Reset progress'))),
                     PopupMenuItem(value: 'adventure', child: Text(tr('Abenteuer neu beginnen', 'Restart adventure'))),
+                    PopupMenuItem(value: 'chordtour', child: Text(tr('Akkord-Tour neu beginnen', 'Restart chord tour'))),
                     PopupMenuItem(value: 'delete', child: Text(tr('Profil löschen', 'Delete profile'))),
                   ],
                 ),
@@ -189,6 +194,8 @@ class _ProfileCard extends StatelessWidget {
               prefix: NoteStatsPrefix.fretboard,
               legend: false,
             ),
+            const Divider(height: 34),
+            _ChordSection(profile: profile),
           ],
         ),
       ),
@@ -217,6 +224,18 @@ class _ProfileCard extends StatelessWidget {
           ),
         )) {
           profile.adventure.remove(profile.curriculumId);
+          await state.saveProfile(profile);
+        }
+      case 'chordtour':
+        if (await _confirm(
+          context,
+          tr('Akkord-Tour von ${profile.nickname} neu beginnen?', 'Restart ${profile.nickname}’s chord tour?'),
+          tr(
+            'Alle Sterne der Akkord-Tour gehen verloren. Münzen und gekaufte Teile bleiben.',
+            'All chord tour stars are lost. Coins and bought items stay.',
+          ),
+        )) {
+          profile.chordAdventure.remove(profile.chordCurriculumId);
           await state.saveProfile(profile);
         }
       case 'reset':
@@ -402,6 +421,69 @@ class _CurriculaTab extends StatelessWidget {
             },
             icon: const Icon(Icons.add_rounded),
             label: Text(tr('Neuer Lehrplan', 'New curriculum')),
+          ),
+        ),
+        const SizedBox(height: 32),
+        Text(tr('Akkord-Lehrpläne', 'Chord curricula'), style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 4),
+        Text(
+          tr(
+            'In welcher Reihenfolge die Akkorde kommen und auf wie vielen Saiten. Jedes Profil bekommt seinen eigenen (unter „Profile“).',
+            'The order in which chords come and on how many strings. Each profile gets its own (under “Profiles”).',
+          ),
+          style: const TextStyle(color: SuonaColors.inkMuted),
+        ),
+        const SizedBox(height: 8),
+        for (final c in state.chordCurricula)
+          Card(
+            margin: const EdgeInsets.only(bottom: 10),
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+              leading: Icon(c.builtIn ? Icons.library_music_rounded : Icons.edit_note_rounded, size: 32),
+              title: Text(c.name, style: Theme.of(context).textTheme.titleLarge),
+              subtitle: Text(
+                '${c.steps.length} ${tr('Schritte', 'steps')} · ${c.steps.isEmpty ? 0 : c.chordsUpTo(c.steps.length - 1).length} ${tr('Akkorde', 'chords')}'
+                '${c.builtIn ? ' · ${tr('eingebaut', 'built in')}' : ''}'
+                ' · ${tr('genutzt von', 'used by')} ${state.profiles.where((p) => p.chordCurriculumId == c.id).length}',
+              ),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => ChordCurriculumEditor(curriculum: c)),
+              ),
+              trailing: c.builtIn
+                  ? const Icon(Icons.chevron_right_rounded)
+                  : IconButton(
+                      tooltip: tr('Löschen', 'Delete'),
+                      icon: const Icon(Icons.delete_outline_rounded),
+                      onPressed: () async {
+                        if (await _confirm(
+                          context,
+                          tr('Akkord-Lehrplan „${c.name}“ löschen?', 'Delete chord curriculum “${c.name}”?'),
+                          tr(
+                            'Profile mit diesem Akkord-Lehrplan bekommen wieder die Akkord-Tour.',
+                            'Profiles using it switch back to the chord tour.',
+                          ),
+                        )) {
+                          await state.deleteChordCurriculum(c);
+                        }
+                      },
+                    ),
+            ),
+          ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: FilledButton.icon(
+            onPressed: () {
+              final c = ChordCurriculum(
+                id: state.newCurriculumId(),
+                name: '',
+                steps: [ChordStep(title: tr('Erste Akkorde', 'First chords'), chords: const [], strings: 3)],
+              );
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => ChordCurriculumEditor(curriculum: c)),
+              );
+            },
+            icon: const Icon(Icons.add_rounded),
+            label: Text(tr('Neuer Akkord-Lehrplan', 'New chord curriculum')),
           ),
         ),
         const SizedBox(height: 32),
@@ -669,6 +751,130 @@ Future<String?> _askText(BuildContext context, String title, String initial) {
 }
 
 /// Wie weit ein Kind im Abenteuer ist, und ob es auf den Unterricht wartet.
+/// Akkorde eines Profils: Akkord-Lehrplan, wie weit, Akkord-Tour, Lernstand.
+class _ChordSection extends StatelessWidget {
+  const _ChordSection({required this.profile});
+  final Profile profile;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = SuonaScope.of(context);
+    final theme = Theme.of(context);
+    final c = state.chordCurriculumOf(profile);
+    final step = c.steps.isEmpty ? 0 : profile.chordStep.clamp(0, c.steps.length - 1);
+    final chords = c.steps.isEmpty ? <Chord>[] : c.chordsUpTo(step);
+    Color colorOf(NoteStat s) {
+      if (s.seen == 0) return SuonaColors.line;
+      if (s.box >= 4) return SuonaColors.ok;
+      if (s.box >= 2) return SuonaColors.spot;
+      return SuonaColors.coral;
+    }
+
+    Widget row(String title, String prefix) => Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(width: 120, child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700))),
+        Expanded(
+          child: Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final ch in chords)
+                Builder(
+                  builder: (_) {
+                    final st = profile.stats.ofKey('$prefix${ch.id}');
+                    return Tooltip(
+                      message: tr('${st.correct} von ${st.seen} richtig', '${st.correct} of ${st.seen} right'),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(color: colorOf(st), borderRadius: BorderRadius.circular(10)),
+                        child: Text(chordName(ch, state.naming), style: const TextStyle(fontWeight: FontWeight.w700)),
+                      ),
+                    );
+                  },
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+
+    var done = 0;
+    for (var s = 0; s < ChordTour.stationCount; s++) {
+      if (ChordTour.stationDone(profile, c.id, s)) done++;
+    }
+    final next = done < ChordTour.stationCount ? done : null;
+    final waits = next != null && ChordTour.lockOf(profile, c, next) == StationLock.teacher;
+    final (from, _) = next == null ? (0, 0) : Adventure.stepsOf(next, c.steps.length);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(tr('Akkorde', 'Chords'), style: theme.textTheme.titleLarge),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 16,
+          runSpacing: 10,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            _LabeledDropdown<String>(
+              label: tr('Akkord-Lehrplan', 'Chord curriculum'),
+              value: c.id,
+              items: {for (final x in state.chordCurricula) x.id: x.name},
+              onChanged: (id) {
+                profile
+                  ..chordCurriculumId = id
+                  ..chordStep = 0;
+                state.saveProfile(profile);
+              },
+            ),
+            if (c.steps.isNotEmpty)
+              _LabeledDropdown<int>(
+                label: tr('Ist bei', 'Currently at'),
+                value: step,
+                items: {for (var i = 0; i < c.steps.length; i++) i: '${i + 1}. ${c.steps[i].title}'},
+                onChanged: (s) {
+                  profile.chordStep = s;
+                  state.saveProfile(profile);
+                },
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (c.steps.isNotEmpty)
+          Row(
+            children: [
+              const Icon(Icons.airport_shuttle_rounded, color: SuonaColors.inkMuted),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  next == null
+                      ? tr('Akkord-Tour: alle 8 Etappen geschafft!', 'Chord tour: all 8 stops done!')
+                      : waits
+                      ? tr(
+                          'Akkord-Tour: $done von 8 Etappen. Wartet auf Schritt ${from + 1} („${c.steps[from].title}“), damit „${ChordTour.stationName(next)}“ aufgeht.',
+                          'Chord tour: $done of 8 stops. Waiting for step ${from + 1} (“${c.steps[from].title}”) to open “${ChordTour.stationName(next)}”.',
+                        )
+                      : tr(
+                          'Akkord-Tour: $done von 8 Etappen, jetzt in „${ChordTour.stationName(next)}“.',
+                          'Chord tour: $done of 8 stops, now at “${ChordTour.stationName(next)}”.',
+                        ),
+                  style: TextStyle(
+                    color: waits ? SuonaColors.red : SuonaColors.inkMuted,
+                    fontWeight: waits ? FontWeight.w700 : null,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        const SizedBox(height: 10),
+        row(tr('Erkennen', 'Recognise'), ChordTask.name.statsPrefix),
+        const SizedBox(height: 8),
+        row(tr('Griff bauen', 'Build shape'), ChordTask.build.statsPrefix),
+      ],
+    );
+  }
+}
+
 class _AdventureLine extends StatelessWidget {
   const _AdventureLine({required this.profile, required this.curriculum});
   final Profile profile;

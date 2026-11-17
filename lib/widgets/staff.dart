@@ -32,9 +32,13 @@ class StaffView extends StatelessWidget {
     this.noteColor = SuonaColors.ink,
     this.drawStaff = true,
     this.drawNotes = true,
+    this.chord = false,
   });
 
   final List<StaffNote> notes;
+
+  /// Alle Noten übereinander als Akkord (Notenstapel).
+  final bool chord;
   final Color lineColor;
   final Color noteColor;
 
@@ -51,6 +55,7 @@ class StaffView extends StatelessWidget {
         lineColor: lineColor,
         noteColor: noteColor,
         drawStaff: drawStaff,
+        chord: chord,
       ),
       size: Size.infinite,
     );
@@ -58,12 +63,19 @@ class StaffView extends StatelessWidget {
 }
 
 class StaffPainter extends CustomPainter {
-  StaffPainter({required this.notes, required this.lineColor, required this.noteColor, this.drawStaff = true});
+  StaffPainter({
+    required this.notes,
+    required this.lineColor,
+    required this.noteColor,
+    this.drawStaff = true,
+    this.chord = false,
+  });
 
   final List<StaffNote> notes;
   final Color lineColor;
   final Color noteColor;
   final bool drawStaff;
+  final bool chord;
 
   /// Linienabstand im Verhältnis zur Höhe.
   static const spacesPerHeight = 12.0;
@@ -91,6 +103,10 @@ class StaffPainter extends CustomPainter {
     }
 
     if (notes.isEmpty) return;
+    if (chord) {
+      _paintChord(canvas, size, space, yOf, linePaint.strokeWidth);
+      return;
+    }
     // Noten gleichmässig im freien Bereich rechts vom Schlüssel verteilen.
     final left = space * 5.5;
     final usable = size.width - left - space * 2;
@@ -127,6 +143,57 @@ class StaffPainter extends CustomPainter {
     }
   }
 
+  /// Notenstapel: alle Töne übereinander. Liegen zwei Töne eine Sekunde
+  /// auseinander, rutscht der obere nach rechts. Vorzeichen stehen gestaffelt
+  /// links, damit sie sich nicht überdecken.
+  void _paintChord(Canvas canvas, Size size, double space, double Function(int) yOf, double stroke) {
+    final left = space * 5.5;
+    final cx = left + (size.width - left - space * 2) / 2;
+    final headWidth = space * 1.69;
+    final sorted = [...notes]..sort((a, b) => a.pitch.staffStep.compareTo(b.pitch.staffStep));
+    final shifted = <int>{};
+    for (var i = 1; i < sorted.length; i++) {
+      if (sorted[i].pitch.staffStep - sorted[i - 1].pitch.staffStep == 1 && !shifted.contains(i - 1)) shifted.add(i);
+    }
+    final ledgerPaint = Paint()
+      ..color = lineColor
+      ..strokeWidth = stroke * 1.15;
+    final low = sorted.first.pitch.staffStep, high = sorted.last.pitch.staffStep;
+    final ledgerLeft = cx - headWidth / 2 - headWidth * 0.35;
+    final ledgerRight = cx + headWidth / 2 + headWidth * (shifted.isEmpty ? 0.35 : 1.3);
+    for (var s = -2; s >= low; s -= 2) {
+      canvas.drawLine(Offset(ledgerLeft, yOf(s)), Offset(ledgerRight, yOf(s)), ledgerPaint);
+    }
+    for (var s = 10; s <= high; s += 2) {
+      canvas.drawLine(Offset(ledgerLeft, yOf(s)), Offset(ledgerRight, yOf(s)), ledgerPaint);
+    }
+    for (var i = 0; i < sorted.length; i++) {
+      final n = sorted[i];
+      final x = cx - headWidth / 2 + (shifted.contains(i) ? headWidth * 0.95 : 0);
+      _glyph(canvas, Smufl.noteheadWhole, space, Offset(x, yOf(n.pitch.staffStep)), n.color ?? noteColor);
+    }
+    // Vorzeichen von oben nach unten in Spalten nach links.
+    final columns = <List<int>>[];
+    for (final n in sorted.reversed) {
+      final acc = switch (n.pitch.accidental) {
+        Accidental.sharp => Smufl.sharp,
+        Accidental.flat => Smufl.flat,
+        Accidental.natural => null,
+      };
+      if (acc == null) continue;
+      final step = n.pitch.staffStep;
+      var col = 0;
+      while (col < columns.length && columns[col].any((s) => (s - step).abs() < 6)) {
+        col++;
+      }
+      if (col == columns.length) columns.add([]);
+      columns[col].add(step);
+      final w = _glyphWidth(acc, space);
+      final x = cx - headWidth / 2 - space * 0.35 - w - col * (w + space * 0.25);
+      _glyph(canvas, acc, space, Offset(x, yOf(step)), n.color ?? noteColor);
+    }
+  }
+
   /// Zeichen so malen, dass sein Bezugspunkt (Grundlinie, links) bei [origin] liegt.
   void _glyph(Canvas canvas, String glyph, double space, Offset origin, Color color) {
     final tp = _painter(glyph, space, color);
@@ -151,6 +218,7 @@ class StaffPainter extends CustomPainter {
       old.lineColor != lineColor ||
       old.noteColor != noteColor ||
       old.drawStaff != drawStaff ||
+      old.chord != chord ||
       !_sameNotes(old.notes, notes);
 
   static bool _sameNotes(List<StaffNote> a, List<StaffNote> b) {

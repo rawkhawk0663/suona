@@ -2,41 +2,36 @@ import 'package:flutter/material.dart';
 
 import '../../app/l10n.dart';
 import '../../app/theme.dart';
-import '../../core/game/adventure.dart';
-import '../../core/game/question.dart';
-import '../../core/music/note_names.dart';
 import '../../core/suona_state.dart';
 import '../../widgets/stage.dart';
-import '../../widgets/staff.dart';
-import 'adventure_launch.dart';
+import 'tour.dart';
 
-/// Eine Station: ihre neuen Töne und die sechs Level bis zum Auftritt.
+/// Eine Station: was hier neu ist und die sechs Level bis zum Auftritt.
 class StationScreen extends StatelessWidget {
-  const StationScreen({super.key, required this.profileId, required this.station});
+  const StationScreen({super.key, required this.profileId, required this.station, this.tour = const NoteTour()});
   final String profileId;
   final int station;
+  final TourSpec tour;
 
   @override
   Widget build(BuildContext context) {
     final state = SuonaScope.of(context);
     final p = state.profiles.where((x) => x.id == profileId).firstOrNull;
     if (p == null) return const Scaffold(backgroundColor: SuonaColors.stage);
-    final c = state.curriculumOf(p);
-    final plan0 = Adventure.plan(c, state.settings.accidentals, station, 0, p.difficulty);
-    final fresh = plan0.focus.toList()..sort();
+    final progress = tour.progress(state, p);
     final levels = Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (var l = 0; l < Adventure.levelsPerStation; l++)
+        for (var l = 0; l < tour.levelsPerStation; l++)
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: _LevelTile(
-              level: l,
-              stars: Adventure.stars(p, c.id, station, l),
-              open: Adventure.levelOpen(p, c, station, l),
-              plan: Adventure.plan(c, state.settings.accidentals, station, l, p.difficulty),
-              onTap: () => startLevel(context, state, p, station, l),
+              name: tour.levelName(l),
+              stars: progress[station][l],
+              open: tour.levelOpen(state, p, station, l),
+              info: tour.levelInfo(state, p, station, l),
+              onTap: () => tour.startLevel(context, state, p, station, l),
             ),
           ),
       ],
@@ -47,22 +42,7 @@ class StationScreen extends StatelessWidget {
       children: [
         Expanded(child: CharacterView(p.look)),
         const SizedBox(height: 10),
-        Text(
-          tr('Neue Töne hier', 'New notes here'),
-          style: display(20, color: SuonaColors.onStage, weight: FontWeight.w700),
-        ),
-        const SizedBox(height: 6),
-        Container(
-          height: 120,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(color: SuonaColors.paper, borderRadius: BorderRadius.circular(16)),
-          child: StaffView(notes: [for (final n in fresh.take(8)) StaffNote(n)]),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          fresh.map((n) => pitchNameWithOctave(n, state.naming)).join(' · '),
-          style: const TextStyle(color: SuonaColors.onStageMuted, fontSize: 15),
-        ),
+        tour.stationInfo(context, state, p, station),
       ],
     );
     return Scaffold(
@@ -80,10 +60,10 @@ class StationScreen extends StatelessWidget {
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                     const SizedBox(width: 14),
-                    Icon(stationIcon(station), color: SuonaColors.spot, size: 36),
+                    Icon(tour.stationIcon(station), color: SuonaColors.spot, size: 36),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(Adventure.stationName(station), style: display(38, color: SuonaColors.spot)),
+                      child: Text(tour.stationName(station), style: display(38, color: SuonaColors.spot)),
                     ),
                     CoinCount(p.coins, size: 26),
                   ],
@@ -105,7 +85,7 @@ class StationScreen extends StatelessWidget {
                       return SingleChildScrollView(
                         child: Column(
                           children: [
-                            SizedBox(height: 420, child: info),
+                            SizedBox(height: 460, child: info),
                             const SizedBox(height: 14),
                             levels,
                           ],
@@ -125,31 +105,21 @@ class StationScreen extends StatelessWidget {
 
 class _LevelTile extends StatelessWidget {
   const _LevelTile({
-    required this.level,
+    required this.name,
     required this.stars,
     required this.open,
-    required this.plan,
+    required this.info,
     required this.onTap,
   });
-  final int level;
+  final String name;
   final int stars;
   final bool open;
-  final LevelPlan plan;
+  final LevelInfo info;
   final VoidCallback onTap;
-
-  String get _what {
-    if (plan.types.length > 1) return tr('Alles gemischt', 'Everything mixed');
-    return switch (plan.types.first) {
-      QuestionType.nameFromStaff => tr('Noten lesen', 'Read notes'),
-      QuestionType.fretFromStaff => tr('Wo liegt die Note?', 'Where is the note?'),
-      QuestionType.nameFromFret => tr('Welcher Ton ist das?', 'Which note is this?'),
-      QuestionType.staffFromFret => tr('Note setzen', 'Write the note'),
-    };
-  }
 
   @override
   Widget build(BuildContext context) {
-    final concert = plan.isConcert;
+    final concert = info.concert;
     final bg = !open ? SuonaColors.stageFloor : (concert ? SuonaColors.red : SuonaColors.violet);
     return Material(
       color: bg,
@@ -171,17 +141,9 @@ class _LevelTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Text(name, style: display(24, color: open ? Colors.white : SuonaColors.onStageMuted)),
                     Text(
-                      Adventure.levelName(level),
-                      style: display(24, color: open ? Colors.white : SuonaColors.onStageMuted),
-                    ),
-                    Text(
-                      [
-                        _what,
-                        tr('${plan.length} Töne', '${plan.length} notes'),
-                        if (plan.timeLimit != null)
-                          tr('${plan.timeLimit!.inSeconds} s pro Ton', '${plan.timeLimit!.inSeconds} s per note'),
-                      ].join(' · '),
+                      [info.what, info.count, ?info.time].join(' · '),
                       style: TextStyle(color: open ? Colors.white70 : SuonaColors.onStageMuted, fontSize: 14.5),
                     ),
                   ],

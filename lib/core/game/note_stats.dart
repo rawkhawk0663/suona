@@ -51,6 +51,26 @@ class NoteStats {
     return 1.0 + (NoteStat.maxBox - s.box) * 1.2;
   }
 
+  /// Lernstand unter einem freien Schlüssel (z. B. Akkorde: 'A:Am').
+  NoteStat ofKey(String key) => map[key] ?? NoteStat();
+
+  void recordKey(String key, {required bool correct}) {
+    final s = map.putIfAbsent(key, NoteStat.new);
+    s.seen++;
+    if (correct) {
+      s.correct++;
+      s.box = min(NoteStat.maxBox, s.box + 1);
+    } else {
+      s.box = 0;
+    }
+  }
+
+  double weightOfKey(String key) {
+    final s = map[key];
+    if (s == null) return 3.0;
+    return 1.0 + (NoteStat.maxBox - s.box) * 1.2;
+  }
+
   Map<String, dynamic> toJson() => {for (final e in map.entries) e.key: e.value.toJson()};
 
   static NoteStats fromJson(Map<String, dynamic>? j) =>

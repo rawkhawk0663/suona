@@ -20,6 +20,7 @@ import '../../core/suona_state.dart';
 import '../../widgets/fretboard.dart';
 import '../../widgets/stage.dart';
 import '../../widgets/staff.dart';
+import '../adventure/adventure_launch.dart';
 import 'result_screen.dart';
 
 enum QuizMode { practice, arcade }
@@ -320,7 +321,10 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
       MaterialPageRoute<void>(
         builder: (_) => ResultScreen(
           profileId: _profile.id,
-          config: widget.config,
+          arcade: _arcade,
+          concert: adv.level == Adventure.concertLevel,
+          again: (_) => QuizScreen(profileId: _profile.id, config: widget.config),
+          next: (context, state, p) => nextLevelButton(context, state, p, adv),
           correct: correct,
           total: _results.length,
           coins: _coins + bonus,
@@ -357,7 +361,8 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
       MaterialPageRoute<void>(
         builder: (_) => ResultScreen(
           profileId: _profile.id,
-          config: widget.config,
+          arcade: _arcade,
+          again: (_) => QuizScreen(profileId: _profile.id, config: widget.config),
           correct: correct,
           total: _results.length,
           coins: _coins + bonus,
@@ -715,7 +720,7 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
         ),
         for (final id in widget.config.pedals) ...[
           const SizedBox(width: 10),
-          _PedalButton(
+          PedalButton(
             id: id,
             used: _usedPedals.contains(id),
             active: (id == 'pedal_shield' && _shieldArmed) || (id == 'pedal_capo' && _capoActive),
@@ -778,7 +783,7 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
         for (var i = 0; i < widget.config.lives; i++)
           Padding(
             padding: const EdgeInsets.only(right: 6),
-            child: _Pick(filled: i < _lives),
+            child: LifePick(filled: i < _lives),
           ),
         const SizedBox(width: 10),
         Text(
@@ -1020,18 +1025,18 @@ class _ModifierButton extends StatelessWidget {
 }
 
 /// Ein Plektrum als Leben im Arcade-Modus.
-class _Pick extends StatelessWidget {
-  const _Pick({required this.filled});
+class LifePick extends StatelessWidget {
+  const LifePick({super.key, required this.filled});
   final bool filled;
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(size: const Size(28, 32), painter: _PickPainter(filled));
+    return CustomPaint(size: const Size(28, 32), painter: _LifePickPainter(filled));
   }
 }
 
-class _PickPainter extends CustomPainter {
-  _PickPainter(this.filled);
+class _LifePickPainter extends CustomPainter {
+  _LifePickPainter(this.filled);
   final bool filled;
 
   @override
@@ -1053,12 +1058,13 @@ class _PickPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_PickPainter old) => old.filled != filled;
+  bool shouldRepaint(_LifePickPainter old) => old.filled != filled;
 }
 
 /// Ein Pedal im Abenteuer: einmal pro Level antippen.
-class _PedalButton extends StatelessWidget {
-  const _PedalButton({
+class PedalButton extends StatelessWidget {
+  const PedalButton({
+    super.key,
     required this.id,
     required this.used,
     required this.active,

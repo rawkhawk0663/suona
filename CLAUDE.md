@@ -6,6 +6,7 @@ Der Bauplan (fünf Pakete) liegt als Artifact „Suona Bauplan“ beim Besitzer.
 1. **Erste Töne** (fertig): Notensystem, „Wie heisst die Note?“, Profile, Münzen/Combo/Streak, einfacher Arcade, Lehrerbereich, Lehrpläne, Mikrofon-Test.
 2. **Griffbrett** (fertig): vier Fragearten (`QuestionType`), Griffbrett-Übung auf der Startseite, Arcade mit Spielart, Lehrplan oder Saiten/Bünde, Vorzeichen, „Saite vorgeben“, Vorlagen.
 3. **Abenteuer** (fertig): Weltkarte mit 8 Stationen, je 5 Level + Auftritt, Publikums-Balken, Shop mit Kleidung, Gitarren und Pedalen, freies Aussehen, Abzeichen. Siehe „Abenteuer und Shop“.
+3+. **Akkord-Tour** (fertig, Wunsch des Besitzers): zweites Abenteuer mit Akkorden, von drei Saiten bis sechs. Siehe „Akkorde“.
 4. **Echt spielen**: Tonerkennung über das Mikrofon (Grundlage `MicListener`/`PitchDetector` ist da).
 5. **Rhythmus, Tabs & Band**.
 
@@ -53,6 +54,16 @@ Der Bauplan (fünf Pakete) liegt als Artifact „Suona Bauplan“ beim Besitzer.
 - **Sets** (`Shop.sets`, `OutfitSet`): Strasse, Strand, Flower-Power, Country, Jazz-Gala, Heavy Metal, Weltall, Pirat, Winter, Magie, Disco, Rockstar. Jedes Teil gehört zu höchstens einem Set. Ein volles Set gibt ein Abzeichen (`set_<id>`), „Meine Teile anziehen“ zieht alle gekauften Teile eines Sets an. Kaufen geht direkt in der Set-Karte.
 - **Abzeichen** (`core/game/badges.dart`): werden aus dem Spielstand berechnet, nicht gespeichert.
 
+## Akkorde (Akkord-Tour)
+- **Griffe** (`core/music/chords.dart`, `ChordLibrary`): rund 25 Griffe der offenen Lage ohne Barré, gespeichert als voller Griff auf 6 Saiten (Liederbuch-Schreibweise `x32010`, Finger `032010`). Für die ersten Etappen wird er auf die hohen Saiten gekürzt (`fretsOn(strings)`): der kleine C-Griff ist der grosse ohne d-, A- und E-Saite. So kennt das Kind die Griffe, wenn Saiten dazukommen. Auf 3 Saiten wird nie eine Saite gedämpft (Test). Töne mit Schreibweise aus den Intervallen (`pitches`: D-Dur mit Fis). Namen nach Einstellung (`chordName`: H7/B7). Sehen zwei Akkorde auf N Saiten gleich aus (E/E7, Em/Cmaj7 auf 3 Saiten), zählen beide (`sameShape`).
+- **Akkord-Lehrplan** (`ChordCurriculum`, Format `suona-akkordplan` v1, `Akkordplaene/<id>.json`): Schritte mit Titel, neuen Akkorden und Saitenzahl (3–6). Eingebaut `BuiltInChordCurricula.tour`, Reihenfolge vom Besitzer: C G G7 · Em F · Am · D Dm D7 (alle 3 Saiten) · D D7 Dm F (4) · C Am A A7 (5) · Em E E7 G G7 (6) · H7 (6). Profil: `chordCurriculumId`, `chordStep` (setzt die Lehrperson), Sterne in `chordAdventure`. Lernkartei: `A:<id>` (erkennen), `AG:<id>` (Griff bauen).
+- **Tour** (`core/game/chord_adventure.dart`, `ChordTour`): gleich gebaut wie das Noten-Abenteuer (8 Etappen: Lagerfeuer, Pausenplatz, Strassenmusik, Zeltlager, Strandparty, Musical-Bühne, Open-Air, Grosses Finale; Sperre durch Auftritt + Lehrperson; Stufen; Publikum). Level: 0 Aufwärmen (Griffbild → Name), 1 Griff bauen, 2 Aus den Noten (Notenstapel → Name), 3 Wechsel (zwei Akkorde abwechselnd bauen), 4 Generalprobe, 5 Lied begleiten (`Song.generate`: erfundene Titel und Akkordfolgen, nie zweimal derselbe Akkord hintereinander, keine echten Lieder wegen Urheberrecht). Zeit: Griff bauen 12 s bis 8,5 s, Erkennen 10 s bis 4,75 s, mal Stufe.
+- **Weltkarte und Station** sind gemeinsam für beide Abenteuer (`features/adventure/tour.dart`: `TourSpec`, `NoteTour`, `ChordTourSpec` in `features/chords/chord_launch.dart`).
+- **Griffbild** (`widgets/chord_board.dart`, `ChordBoard`): wie unser Griffbrett waagrecht (Wunsch des Besitzers), nur die nötigen Saiten, 5 Bünde, Fingernummern in den Punkten, links „o“/„x“. Beim Bauen: Punkt antippen setzt/entfernt (ein Punkt pro Saite), links antippen nimmt den Punkt weg oder schaltet „x“ (erst ab 4 Saiten). „Fertig“ prüft (kein automatisches Prüfen, sonst wäre Em auf leeren Saiten sofort richtig).
+- **Spielbildschirm** `features/chords/chord_quiz_screen.dart` (eigener, nicht `QuizScreen`), Akkord-Seite `chords_screen.dart` (Kachel „Akkorde“ auf der Startseite: Üben, Akkord-Tour, Akkord-Arcade mit Rekord `arcadeBests['chords']`). `ResultScreen` gilt für beide (`again`, `next`, `arcade`, `concert`).
+- Notensystem kann Akkorde (`StaffView(chord: true)`: Sekunden versetzt, Vorzeichen gestaffelt). Klang: `Sounds.strum` (Saiten 35 ms versetzt).
+- Lehrerbereich: pro Profil Akkord-Lehrplan, „Ist bei“, Stand der Tour und Lernstand (Erkennen/Griff bauen), „Akkord-Tour neu beginnen“; Akkord-Lehrpläne unter „Lehrpläne“ (`chord_curriculum_editor.dart`).
+
 ## Lehrpläne
 - `Curriculum` = Schritte mit **neuen** Tönen. Eingebaut: guitarTALKS (Markus Engler), nur die Reihenfolge der Töne, keine Stücke oder Figuren aus dem Buch (Urheberrecht). Eigene Lehrpläne legt die Lehrperson an (`curriculum_editor.dart`), z. B. „Play Guitar Junior“ (macht der Besitzer selbst).
 - Jedes Profil hat `curriculumId` und `step` (wie weit das Kind ist, setzt die Lehrperson). Üben nimmt alle Töne bis `step`, die neuen Töne des aktuellen Schritts kommen doppelt so oft.
@@ -66,8 +77,8 @@ Der Bauplan (fünf Pakete) liegt als Artifact „Suona Bauplan“ beim Besitzer.
 
 ## Daten
 Alles im Datenordner der App (`getApplicationSupportDirectory`, unter Windows `%APPDATA%\Suona\Suona`):
-- `Spielstaende/<id>.json` (Format `suona-profil` v1, mit `difficulty`, `look` (auch `neck`, `amp`), `owned`, `adventure`)
-- `Lehrplaene/<id>.json` (Format `suona-lehrplan` v1)
+- `Spielstaende/<id>.json` (Format `suona-profil` v1, mit `difficulty`, `look` (auch `neck`, `amp`), `owned`, `adventure`, `chordCurriculum`, `chordStep`, `chordAdventure`)
+- `Lehrplaene/<id>.json` (Format `suona-lehrplan` v1), `Akkordplaene/<id>.json` (Format `suona-akkordplan` v1)
 - `einstellungen.json`, `arcade_vorlagen.json`, `fehler.log`, `update.log`
 Geschrieben wird immer über eine Zwischendatei (`json_files.dart`).
 
@@ -83,8 +94,9 @@ lib/
     audio/     Klänge, Tonerkennung, Mikrofon
     suona_state.dart  Zustand der App (SuonaScope)
   features/    start (Wer spielt?), home (mit Abzeichen), quiz (Üben, Arcade, Abenteuer-Level, Ergebnis), arcade (Einstellungen),
-               adventure (Weltkarte, Station), shop (Shop und Aussehen), teacher (Lehrerbereich)
-  widgets/     Bühne, Figuren, Münzen, Notensystem, Griffbrett
+               adventure (Weltkarte, Station, Tour), chords (Akkord-Seite, Akkord-Quiz, Akkord-Tour), shop (Shop und Aussehen),
+               teacher (Lehrerbereich)
+  widgets/     Bühne, Figuren, Münzen, Notensystem, Griffbrett, Griffbild für Akkorde
 assets/characters/  Luna und Fuzz als SVG (ganz und nur Gesicht), erzeugt mit tool/make_characters.py.
 tool/make_characters.py  zeichnet die Figuren (siehe „Figuren“)
 tool/make_icon.py   erzeugt das App-Symbol (Windows .ico, Android)

@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 
 import '../app/l10n.dart';
 import 'game/arcade_settings.dart';
+import 'music/chords.dart';
 import 'music/curriculum.dart';
 import 'music/note_names.dart';
 import 'music/pitch.dart';
@@ -55,18 +56,21 @@ class SuonaState extends ChangeNotifier {
   SuonaState(this.dataDir)
     : _profilesDir = JsonFolder(p.join(dataDir, 'Spielstaende')),
       _curriculaDir = JsonFolder(p.join(dataDir, 'Lehrplaene')),
+      _chordCurriculaDir = JsonFolder(p.join(dataDir, 'Akkordplaene')),
       _settingsFile = JsonFile(p.join(dataDir, 'einstellungen.json')),
       _presetsFile = JsonFile(p.join(dataDir, 'arcade_vorlagen.json'));
 
   final String dataDir;
   final JsonFolder _profilesDir;
   final JsonFolder _curriculaDir;
+  final JsonFolder _chordCurriculaDir;
   final JsonFile _settingsFile;
   final JsonFile _presetsFile;
 
   SuonaSettings settings = SuonaSettings();
   final List<Profile> profiles = [];
   final List<Curriculum> _custom = [];
+  final List<ChordCurriculum> _customChords = [];
   final List<ArcadePreset> _presets = [];
   bool loaded = false;
 
@@ -87,6 +91,13 @@ class SuonaState extends ChangeNotifier {
       ..addAll([
         for (final j in await _curriculaDir.readAll())
           if (j['id'] is String) Curriculum.fromJson(j),
+      ])
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    _customChords
+      ..clear()
+      ..addAll([
+        for (final j in await _chordCurriculaDir.readAll())
+          if (j['id'] is String) ChordCurriculum.fromJson(j),
       ])
       ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     final presets = await _presetsFile.read();
@@ -195,6 +206,60 @@ class SuonaState extends ChangeNotifier {
     }
     notifyListeners();
     await _curriculaDir.delete(c.id);
+  }
+
+  // ---------- Akkord-Lehrpläne ----------
+
+  List<ChordCurriculum> get chordCurricula => [...BuiltInChordCurricula.all, ..._customChords];
+
+  ChordCurriculum chordCurriculumById(String id) =>
+      chordCurricula.firstWhere((c) => c.id == id, orElse: () => BuiltInChordCurricula.tour);
+
+  ChordCurriculum chordCurriculumOf(Profile profile) => chordCurriculumById(profile.chordCurriculumId);
+
+  Future<void> saveChordCurriculum(ChordCurriculum c) async {
+    if (c.builtIn) return;
+    _customChords
+      ..removeWhere((x) => x.id == c.id)
+      ..add(c)
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    notifyListeners();
+    await _chordCurriculaDir.write(c.id, c.toJson());
+  }
+
+  Future<void> deleteChordCurriculum(ChordCurriculum c) async {
+    if (c.builtIn) return;
+    _customChords.removeWhere((x) => x.id == c.id);
+    // Profile mit diesem Akkord-Lehrplan bekommen wieder den eingebauten.
+    for (final pr in profiles.where((x) => x.chordCurriculumId == c.id).toList()) {
+      pr
+        ..chordCurriculumId = BuiltInChordCurricula.tourId
+        ..chordStep = 0;
+      await _profilesDir.write(pr.id, pr.toJson());
+    }
+    notifyListeners();
+    await _chordCurriculaDir.delete(c.id);
+  }
+
+  /// Akkorde zum Üben: alles bis zum aktuellen Akkord-Schritt.
+  List<Chord> chordPool(Profile profile) {
+    final c = chordCurriculumOf(profile);
+    if (c.steps.isEmpty) return const [];
+    return c.chordsUpTo(profile.chordStep.clamp(0, c.steps.length - 1));
+  }
+
+  /// Neu im aktuellen Akkord-Schritt.
+  Set<Chord> chordFocus(Profile profile) {
+    final c = chordCurriculumOf(profile);
+    if (c.steps.isEmpty) return {};
+    return c.steps[profile.chordStep.clamp(0, c.steps.length - 1)].chordList.toSet();
+  }
+
+  /// Saiten im Griffbild beim Üben.
+  int chordStrings(Profile profile) {
+    final c = chordCurriculumOf(profile);
+    if (c.steps.isEmpty) return 6;
+    return c.stringsAt(profile.chordStep.clamp(0, c.steps.length - 1));
   }
 
   // ---------- Notenvorrat ----------

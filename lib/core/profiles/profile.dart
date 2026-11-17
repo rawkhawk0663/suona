@@ -4,6 +4,7 @@ export '../character/look.dart' show Character, CharacterLook;
 import '../game/difficulty.dart';
 import '../game/note_stats.dart';
 import '../game/rewards.dart';
+import '../music/chords.dart';
 import '../music/curriculum.dart';
 
 /// Ein Spielprofil. Bewusst ohne echten Namen, Alter oder Foto:
@@ -16,6 +17,8 @@ class Profile {
     this.curriculumId = BuiltInCurricula.guitarTalksId,
     this.step = 0,
     this.difficulty = Difficulty.standard,
+    this.chordCurriculumId = BuiltInChordCurricula.tourId,
+    this.chordStep = 0,
     this.coins = 0,
     DailyStreak? streak,
     NoteStats? stats,
@@ -26,10 +29,12 @@ class Profile {
     CharacterLook? look,
     Set<String>? owned,
     Map<String, List<List<int>>>? adventure,
+    Map<String, List<List<int>>>? chordAdventure,
     DateTime? created,
   }) : _look = look, // ignore: prefer_initializing_formals
        owned = owned ?? {},
        adventure = adventure ?? {},
+       chordAdventure = chordAdventure ?? {},
        streak = streak ?? DailyStreak(),
        stats = stats ?? NoteStats(),
        arcadeBests = (arcadeBests == null || arcadeBests.isEmpty)
@@ -47,6 +52,10 @@ class Profile {
 
   /// Schwierigkeitsstufe (setzt die Lehrperson). Nur die Stufe, kein Alter.
   Difficulty difficulty;
+
+  /// Akkord-Lehrplan und wie weit das Kind darin ist (setzt die Lehrperson).
+  String chordCurriculumId;
+  int chordStep;
 
   int coins;
   final DailyStreak streak;
@@ -68,6 +77,9 @@ class Profile {
   /// Sterne im Abenteuer pro Lehrplan: 8 Stationen × 6 Level, 0 = noch nicht geschafft.
   final Map<String, List<List<int>>> adventure;
 
+  /// Sterne in der Akkord-Tour pro Akkord-Lehrplan (8 × 6).
+  final Map<String, List<List<int>>> chordAdventure;
+
   CharacterLook? _look;
 
   /// Aussehen. Passt es nicht zur Figur (Figur gewechselt), gilt der Grund-Look.
@@ -87,6 +99,8 @@ class Profile {
     'curriculum': curriculumId,
     'step': step,
     'difficulty': difficulty.name,
+    'chordCurriculum': chordCurriculumId,
+    'chordStep': chordStep,
     'coins': coins,
     'streak': streak.toJson(),
     'stats': stats.toJson(),
@@ -96,6 +110,7 @@ class Profile {
     'look': look.toJson(),
     'owned': owned.toList()..sort(),
     'adventure': adventure,
+    'chordAdventure': chordAdventure,
     'created': created.toIso8601String(),
   };
 
@@ -106,6 +121,8 @@ class Profile {
     curriculumId: j['curriculum'] as String? ?? BuiltInCurricula.guitarTalksId,
     step: (j['step'] as num?)?.toInt() ?? 0,
     difficulty: Difficulty.fromName(j['difficulty'] as String?),
+    chordCurriculumId: j['chordCurriculum'] as String? ?? BuiltInChordCurricula.tourId,
+    chordStep: (j['chordStep'] as num?)?.toInt() ?? 0,
     coins: (j['coins'] as num?)?.toInt() ?? 0,
     streak: DailyStreak.fromJson(j['streak'] as Map<String, dynamic>?),
     stats: NoteStats.fromJson(j['stats'] as Map<String, dynamic>?),
@@ -123,6 +140,7 @@ class Profile {
           )
         : null,
     owned: {for (final x in (j['owned'] as List<dynamic>? ?? const [])) x.toString()},
+    chordAdventure: _stars(j['chordAdventure']),
     adventure: {
       for (final e in ((j['adventure'] as Map<String, dynamic>?) ?? const {}).entries)
         e.key: [
@@ -132,3 +150,11 @@ class Profile {
     created: DateTime.tryParse(j['created'] as String? ?? ''),
   );
 }
+
+/// Sterne eines Abenteuers aus der Datei lesen (Lehrplan → Stationen × Level).
+Map<String, List<List<int>>> _stars(Object? j) => {
+  for (final e in ((j as Map<String, dynamic>?) ?? const {}).entries)
+    e.key: [
+      for (final st in (e.value as List<dynamic>)) [for (final v in (st as List<dynamic>)) (v as num).toInt()],
+    ],
+};

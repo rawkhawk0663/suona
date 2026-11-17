@@ -1,6 +1,7 @@
 import '../../app/l10n.dart';
 import '../profiles/profile.dart';
 import 'adventure.dart';
+import 'chord_adventure.dart';
 import 'shop.dart';
 
 /// Ein Abzeichen. Wird aus dem Spielstand berechnet, nicht gespeichert.
@@ -66,6 +67,16 @@ List<Badge> badgesOf(Profile p) {
           'Played the concert at “${Adventure.stationName(s)}”',
         ),
         stationDone(s),
+      ),
+    for (var s = 0; s < ChordTour.stationCount; s++)
+      Badge(
+        'chord$s',
+        tr('Tour: ${ChordTour.stationName(s)}', 'Tour: ${ChordTour.stationName(s)}'),
+        tr(
+          'Akkord-Tour: „${ChordTour.stationName(s)}“ begleitet',
+          'Chord tour: played along at “${ChordTour.stationName(s)}”',
+        ),
+        ChordTour.stationDone(p, p.chordCurriculumId, s),
       ),
     for (final set in Shop.sets)
       Badge(

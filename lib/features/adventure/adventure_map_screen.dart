@@ -8,26 +8,27 @@ import '../../core/game/adventure.dart';
 import '../../core/profiles/profile.dart';
 import '../../core/suona_state.dart';
 import '../../widgets/stage.dart';
-import 'adventure_launch.dart';
 import 'station_screen.dart';
+import 'tour.dart';
 
-/// Weltkarte: acht Stationen vom Kinderzimmer bis ins Stadion, verbunden
-/// durch einen Weg. Geschaffte Stationen leuchten, die aktuelle pulsiert.
+/// Weltkarte: acht Stationen, verbunden durch einen Weg. Geschaffte
+/// Stationen leuchten, die aktuelle pulsiert. Für Noten-Abenteuer und
+/// Akkord-Tour ([tour]).
 class AdventureMapScreen extends StatelessWidget {
-  const AdventureMapScreen({super.key, required this.profileId});
+  const AdventureMapScreen({super.key, required this.profileId, this.tour = const NoteTour()});
   final String profileId;
+  final TourSpec tour;
 
   @override
   Widget build(BuildContext context) {
     final state = SuonaScope.of(context);
     final p = state.profiles.where((x) => x.id == profileId).firstOrNull;
     if (p == null) return const Scaffold(backgroundColor: SuonaColors.stage);
-    final c = state.curriculumOf(p);
-    final progress = Adventure.progressOf(p, c.id);
+    final progress = tour.progress(state, p);
     // Aktuelle Station: die letzte offene.
     var current = 0;
-    for (var s = 0; s < Adventure.stationCount; s++) {
-      if (Adventure.lockOf(p, c, s) == null) current = s;
+    for (var s = 0; s < tour.stationCount; s++) {
+      if (tour.lockOf(state, p, s) == null) current = s;
     }
     final totalStars = progress.fold<int>(0, (a, row) => a + row.fold<int>(0, (b, x) => b + x));
     return Scaffold(
@@ -50,12 +51,9 @@ class AdventureMapScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(tr('Abenteuer', 'Adventure'), style: display(40, color: SuonaColors.spot)),
+                          Text(tour.title, style: display(40, color: SuonaColors.spot)),
                           Text(
-                            tr(
-                              'Vom Kinderzimmer ins Stadion · ${c.name}',
-                              'From the bedroom to the stadium · ${c.name}',
-                            ),
+                            tour.subtitle(state, p),
                             style: const TextStyle(color: SuonaColors.onStageMuted, fontSize: 15),
                           ),
                         ],
@@ -79,22 +77,20 @@ class AdventureMapScreen extends StatelessWidget {
                       profile: p,
                       current: current,
                       progress: progress,
-                      lockOf: (s) => Adventure.lockOf(p, c, s),
+                      tour: tour,
+                      lockOf: (s) => tour.lockOf(state, p, s),
                       onOpen: (s) {
-                        final lock = Adventure.lockOf(p, c, s);
+                        final lock = tour.lockOf(state, p, s);
                         if (lock != null) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
                                 lock == StationLock.previous
                                     ? tr(
-                                        'Schaff zuerst den Auftritt in „${Adventure.stationName(s - 1)}“.',
-                                        'First play the concert at “${Adventure.stationName(s - 1)}”.',
+                                        'Schaff zuerst den Auftritt in „${tour.stationName(s - 1)}“.',
+                                        'First play the concert at “${tour.stationName(s - 1)}”.',
                                       )
-                                    : tr(
-                                        'Die neuen Töne dieser Station lernst du zuerst im Unterricht. Deine Lehrperson schaltet sie frei.',
-                                        'You learn the new notes of this station in your lesson first. Your teacher unlocks them.',
-                                      ),
+                                    : tour.teacherLockText,
                                 style: const TextStyle(fontSize: 17),
                               ),
                             ),
@@ -103,7 +99,7 @@ class AdventureMapScreen extends StatelessWidget {
                         }
                         Navigator.of(context).push(
                           MaterialPageRoute<void>(
-                            builder: (_) => StationScreen(profileId: p.id, station: s),
+                            builder: (_) => StationScreen(profileId: p.id, station: s, tour: tour),
                           ),
                         );
                       },
@@ -121,6 +117,7 @@ class AdventureMapScreen extends StatelessWidget {
 
 class _MapView extends StatelessWidget {
   const _MapView({
+    required this.tour,
     required this.size,
     required this.profile,
     required this.current,
@@ -129,6 +126,7 @@ class _MapView extends StatelessWidget {
     required this.onOpen,
   });
 
+  final TourSpec tour;
   final Size size;
   final Profile profile;
   final int current;
@@ -163,6 +161,7 @@ class _MapView extends StatelessWidget {
             top: pts[s].dy - node / 2,
             width: node * 1.6,
             child: _StationNode(
+              tour: tour,
               station: s,
               size: node,
               locked: lockOf(s),
@@ -212,6 +211,7 @@ class _PathPainter extends CustomPainter {
 
 class _StationNode extends StatelessWidget {
   const _StationNode({
+    required this.tour,
     required this.station,
     required this.size,
     required this.locked,
@@ -221,6 +221,7 @@ class _StationNode extends StatelessWidget {
     required this.onTap,
   });
 
+  final TourSpec tour;
   final int station;
   final double size;
   final StationLock? locked;
@@ -259,7 +260,7 @@ class _StationNode extends StatelessWidget {
                   boxShadow: const [BoxShadow(color: Color(0x55000000), blurRadius: 12, offset: Offset(0, 5))],
                 ),
                 child: Icon(
-                  locked != null ? Icons.lock_rounded : stationIcon(station),
+                  locked != null ? Icons.lock_rounded : tour.stationIcon(station),
                   size: size * 0.48,
                   color: locked != null ? SuonaColors.onStageMuted : Colors.white,
                 ),
@@ -283,7 +284,7 @@ class _StationNode extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            Adventure.stationName(station),
+            tour.stationName(station),
             textAlign: TextAlign.center,
             style: display(17, color: locked != null ? SuonaColors.onStageMuted : SuonaColors.onStage),
           ),

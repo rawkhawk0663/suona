@@ -27,7 +27,7 @@ QuizConfig adventureConfig(SuonaState state, Profile p, int station, int level) 
 }
 
 /// Level starten. [replace]: den aktuellen Bildschirm ersetzen (vom Ergebnis aus).
-Future<void> startLevel(
+Future<void> startNoteLevel(
   BuildContext context,
   SuonaState state,
   Profile p,
@@ -51,7 +51,7 @@ Widget? nextLevelButton(BuildContext context, SuonaState state, Profile p, Adven
   }
   if (station >= Adventure.stationCount || !Adventure.levelOpen(p, c, station, level)) return null;
   return FilledButton.icon(
-    onPressed: () => startLevel(context, state, p, station, level, replace: true),
+    onPressed: () => startNoteLevel(context, state, p, station, level, replace: true),
     icon: const Icon(Icons.arrow_forward_rounded, size: 28),
     label: Text(
       level == 0
@@ -68,7 +68,7 @@ Widget? nextLevelButton(BuildContext context, SuonaState state, Profile p, Adven
 }
 
 /// Symbol einer Station.
-IconData stationIcon(int s) => switch (s) {
+IconData noteStationIcon(int s) => switch (s) {
   0 => Icons.bed_rounded,
   1 => Icons.garage_rounded,
   2 => Icons.school_rounded,

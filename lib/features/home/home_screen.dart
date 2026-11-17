@@ -8,6 +8,7 @@ import '../../widgets/stage.dart';
 import '../../core/game/badges.dart';
 import '../adventure/adventure_map_screen.dart';
 import '../arcade/arcade_setup_screen.dart';
+import '../chords/chords_screen.dart';
 import '../shop/shop_screen.dart';
 import 'badges_dialog.dart';
 import '../quiz/quiz_screen.dart';
@@ -72,16 +73,35 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 14),
-        StageTile(
-          title: 'Arcade',
-          subtitle: profile.arcadeBest > 0
-              ? tr('Endlos spielen · Rekord ${profile.arcadeBest}', 'Endless play · Best ${profile.arcadeBest}')
-              : tr('Endlos spielen, bis 3 Fehler', 'Endless play until 3 mistakes'),
-          icon: Icons.bolt_rounded,
-          color: SuonaColors.violet,
-          onTap: () =>
-              Navigator.of(context)
-                  .push(MaterialPageRoute<void>(builder: (_) => ArcadeSetupScreen(profileId: profile.id))),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: StageTile(
+                  title: 'Arcade',
+                  subtitle: profile.arcadeBest > 0
+                      ? tr('Endlos · Rekord ${profile.arcadeBest}', 'Endless · Best ${profile.arcadeBest}')
+                      : tr('Endlos, bis 3 Fehler', 'Endless, until 3 mistakes'),
+                  icon: Icons.bolt_rounded,
+                  color: SuonaColors.violet,
+                  onTap: () => Navigator.of(context)
+                      .push(MaterialPageRoute<void>(builder: (_) => ArcadeSetupScreen(profileId: profile.id))),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: StageTile(
+                  title: tr('Akkorde', 'Chords'),
+                  subtitle: tr('Griffe und Akkord-Tour', 'Shapes and chord tour'),
+                  icon: Icons.library_music_rounded,
+                  color: SuonaColors.spotDeep,
+                  onTap: () => Navigator.of(context)
+                      .push(MaterialPageRoute<void>(builder: (_) => ChordsScreen(profileId: profile.id))),
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 14),
         IntrinsicHeight(

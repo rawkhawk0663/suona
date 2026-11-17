@@ -48,6 +48,10 @@ class Sounds {
   /// Gezupfter Gitarrenton (klingende MIDI-Nummer).
   Future<void> pluck(int midi) => _play('pluck-$midi', () => pluckSamples(midi), volume: 0.9);
 
+  /// Akkord anschlagen: die Saiten kurz nacheinander von tief nach hoch.
+  Future<void> strum(List<int> midis) =>
+      _play('strum-${midis.join('-')}', () => strumSamples(midis), volume: 0.9);
+
   Future<void> correct() => _play('richtig', _chime, volume: 0.55);
 
   Future<void> wrong() => _play('falsch', _buzz, volume: 0.45);
@@ -95,6 +99,19 @@ class Sounds {
       out[n - 1 - i] *= i / fade;
     }
     return _normalize(out, 0.8);
+  }
+
+  /// Mehrere gezupfte Saiten, je 35 ms versetzt (wie ein Anschlag mit dem Daumen).
+  static Float32List strumSamples(List<int> midis, {double seconds = 2.2}) {
+    final out = Float32List((_rate * seconds).round());
+    for (var i = 0; i < midis.length; i++) {
+      final s = pluckSamples(midis[i], seconds: seconds - 0.2);
+      final start = (i * 0.035 * _rate).round();
+      for (var k = 0; k < s.length && start + k < out.length; k++) {
+        out[start + k] += s[k];
+      }
+    }
+    return _normalize(out, 0.85);
   }
 
   static Float32List _tone(

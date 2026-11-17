@@ -2,12 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../app/l10n.dart';
 import '../../app/theme.dart';
-import '../../core/game/adventure.dart';
 import '../../core/game/rewards.dart';
+import '../../core/profiles/profile.dart';
 import '../../core/suona_state.dart';
 import '../../widgets/stage.dart';
-import '../adventure/adventure_launch.dart';
-import 'quiz_screen.dart';
 
 /// Ergebnis eines Abenteuer-Levels.
 class AdventureOutcome {
@@ -17,12 +15,15 @@ class AdventureOutcome {
   final bool firstClear;
 }
 
-/// Ergebnis einer Runde: Sterne, Münzen, Streak.
+/// Ergebnis einer Runde: Sterne, Münzen, Streak. Gilt für Noten und Akkorde.
 class ResultScreen extends StatelessWidget {
   const ResultScreen({
     super.key,
     required this.profileId,
-    required this.config,
+    required this.arcade,
+    required this.again,
+    this.concert = false,
+    this.next,
     required this.correct,
     required this.total,
     required this.coins,
@@ -34,7 +35,18 @@ class ResultScreen extends StatelessWidget {
   });
 
   final String profileId;
-  final QuizConfig config;
+
+  /// Arcade: Rekord statt Sterne.
+  final bool arcade;
+
+  /// „Nochmal“: dieselbe Runde neu.
+  final WidgetBuilder again;
+
+  /// Im Abenteuer war es ein Auftritt.
+  final bool concert;
+
+  /// „Weiter“ zum nächsten Level (null, wenn nichts offen ist).
+  final Widget? Function(BuildContext context, SuonaState state, Profile profile)? next;
   final int correct;
   final int total;
   final int coins;
@@ -44,15 +56,14 @@ class ResultScreen extends StatelessWidget {
   final StreakEvent? streakEvent;
   final AdventureOutcome? adventure;
 
-  bool get _arcade => config.mode == QuizMode.arcade;
+  bool get _arcade => arcade;
 
   String get _headline {
     final adv = adventure;
     if (adv != null) {
       if (adv.crowdGone) return tr('Das Publikum ist gegangen', 'The crowd has left');
       if (!adv.passed) return tr('Fast! Nochmal?', 'Almost! Again?');
-      final ref = config.adventure!;
-      if (ref.level == Adventure.concertLevel) return tr('Was für ein Auftritt!', 'What a concert!');
+      if (concert) return tr('Was für ein Auftritt!', 'What a concert!');
       return tr('Level geschafft!', 'Level cleared!');
     }
     if (_arcade) {
@@ -168,12 +179,12 @@ class ResultScreen extends StatelessWidget {
                     runSpacing: 12,
                     alignment: WrapAlignment.center,
                     children: [
-                      if (adventure != null && adventure!.passed && profile != null)
-                        ?nextLevelButton(context, state, profile, config.adventure!),
+                      if (adventure != null && adventure!.passed && profile != null && next != null)
+                        ?next!(context, state, profile),
                       FilledButton.icon(
                         onPressed: () => Navigator.of(context).pushReplacement(
                           MaterialPageRoute<void>(
-                            builder: (_) => QuizScreen(profileId: profileId, config: config),
+                            builder: again,
                           ),
                         ),
                         icon: const Icon(Icons.replay_rounded, size: 28),
