@@ -19,6 +19,7 @@ class Profile {
     this.difficulty = Difficulty.standard,
     this.chordCurriculumId = BuiltInChordCurricula.tourId,
     this.chordStep = 0,
+    this.playWithGuitar = false,
     this.coins = 0,
     DailyStreak? streak,
     NoteStats? stats,
@@ -56,6 +57,9 @@ class Profile {
   /// Akkord-Lehrplan und wie weit das Kind darin ist (setzt die Lehrperson).
   String chordCurriculumId;
   int chordStep;
+
+  /// Antworten mit der Gitarre über das Mikrofon (Schalter „Gitarre“ beim Üben).
+  bool playWithGuitar;
 
   int coins;
   final DailyStreak streak;
@@ -101,6 +105,7 @@ class Profile {
     'difficulty': difficulty.name,
     'chordCurriculum': chordCurriculumId,
     'chordStep': chordStep,
+    'playWithGuitar': playWithGuitar,
     'coins': coins,
     'streak': streak.toJson(),
     'stats': stats.toJson(),
@@ -123,6 +128,7 @@ class Profile {
     difficulty: Difficulty.fromName(j['difficulty'] as String?),
     chordCurriculumId: j['chordCurriculum'] as String? ?? BuiltInChordCurricula.tourId,
     chordStep: (j['chordStep'] as num?)?.toInt() ?? 0,
+    playWithGuitar: j['playWithGuitar'] as bool? ?? false,
     coins: (j['coins'] as num?)?.toInt() ?? 0,
     streak: DailyStreak.fromJson(j['streak'] as Map<String, dynamic>?),
     stats: NoteStats.fromJson(j['stats'] as Map<String, dynamic>?),

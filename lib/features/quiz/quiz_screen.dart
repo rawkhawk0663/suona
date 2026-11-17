@@ -6,6 +6,9 @@ import 'package:flutter/services.dart';
 
 import '../../app/l10n.dart';
 import '../../app/theme.dart';
+import '../../core/audio/mic_listener.dart';
+import '../../core/audio/note_judge.dart';
+import '../../core/audio/pitch_detector.dart';
 import '../../core/audio/sounds.dart';
 import '../../core/game/adventure.dart';
 import '../../core/game/note_stats.dart';
@@ -154,6 +157,25 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
   bool _capoActive = false;
   final _hiddenLetters = <Letter>{};
   int? _tunerString;
+
+  // Echt spielen: Antworten mit der Gitarre über das Mikrofon. Der Ton wird
+  // nur im Speicher ausgewertet, nie aufgenommen oder gespeichert.
+  MicListener? _mic;
+  StreamSubscription<PitchReading>? _micSub;
+  final _judge = NoteJudge();
+  final _live = ValueNotifier<PitchReading>(PitchReading.silent);
+  String? _micError;
+  bool _micStarting = false;
+
+  /// Gehörter Ton bei der letzten Antwort (falsch gespielt).
+  int? _heardMidi;
+
+  bool get _playMode => _profile.playWithGuitar;
+
+  /// Gespielt wird nur, wo das Spielen etwas übt: Note lesen und spielen,
+  /// Note auf der Gitarre finden. Bei „Welcher Ton ist das?“ müsste man nur
+  /// den gezeigten Punkt nachspielen, bei „Note setzen“ wird geschrieben.
+  bool get _micQuestion => _q.type == QuestionType.nameFromStaff || _q.type == QuestionType.fretFromStaff;
   NoteNaming get _naming => _state.naming;
   Pitch get _note => _q.pitch;
 
@@ -172,10 +194,62 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
         if (s == AnimationStatus.completed && _phase == _Phase.asking) _evaluate(false);
       });
     _ask();
+    if (_playMode) unawaited(_startMic());
+  }
+
+  Future<void> _startMic() async {
+    if (_mic != null || _micStarting) return;
+    _micStarting = true;
+    final mic = MicListener();
+    final error = await mic.start();
+    _micStarting = false;
+    if (!mounted || !_playMode) {
+      await mic.dispose();
+      return;
+    }
+    if (error != null) {
+      await mic.dispose();
+      setState(() => _micError = error);
+      return;
+    }
+    _micSub = mic.readings.listen(_onReading);
+    setState(() {
+      _mic = mic;
+      _micError = null;
+    });
+    _judge.expect(_note.midi);
+  }
+
+  Future<void> _stopMic() async {
+    await _micSub?.cancel();
+    _micSub = null;
+    final mic = _mic;
+    _mic = null;
+    _live.value = PitchReading.silent;
+    await mic?.dispose();
+  }
+
+  Future<void> _setPlayMode(bool on) async {
+    setState(() {
+      _profile.playWithGuitar = on;
+      _micError = null;
+    });
+    unawaited(_state.saveProfile(_profile));
+    on ? await _startMic() : await _stopMic();
+  }
+
+  void _onReading(PitchReading r) {
+    _live.value = r;
+    final d = _judge.add(r);
+    if (d == null || _phase != _Phase.asking || !_micQuestion) return;
+    _heardMidi = d.correct ? null : d.midi;
+    _evaluate(d.correct);
   }
 
   @override
   void dispose() {
+    unawaited(_stopMic());
+    _live.dispose();
     _next?.cancel();
     _timer.dispose();
     _focusNode.dispose();
@@ -205,8 +279,11 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
       _tunerString = null;
       _tapped = null;
       _placedStep = null;
+      _heardMidi = null;
       _modifier = Accidental.natural;
     });
+    // Beim Spielen auf den neuen Ton warten; der alte darf noch ausklingen.
+    if (_mic != null) _judge.expect(_note.midi, previous: last?.midi);
     if (widget.config.timeLimit != null) _timer.forward(from: 0);
   }
 
@@ -238,6 +315,7 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
   void _evaluate(bool ok) {
     if (_phase != _Phase.asking || _finished) return;
     _timer.stop();
+    _judge.pause();
     _profile.stats.record(_note, correct: ok, prefix: _q.type.statsPrefix);
     // Schild-Pedal: Der Fehler zählt nicht, das Publikum merkt nichts.
     if (!ok && _shieldArmed) {
@@ -446,7 +524,7 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
           children: [
             Expanded(child: _withFeedback(_staffCard(maxWidth: 980, aspect: 1.75))),
             const SizedBox(height: 18),
-            _letterPad(),
+            if (_playMode) _listenPanel() else _letterPad(),
           ],
         );
       case QuestionType.fretFromStaff:
@@ -454,6 +532,7 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
           children: [
             Expanded(child: _withFeedback(_staffCard(maxWidth: 820, aspect: 2.1))),
             const SizedBox(height: 14),
+            if (_playMode) ...[_listenPanel(compact: true), const SizedBox(height: 10)],
             if (_q.onString != null) _stringHint(),
             SizedBox(height: fretHeight, child: _fretboardCard(answer: true)),
           ],
@@ -750,8 +829,100 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
             decoration: BoxDecoration(color: SuonaColors.coral, borderRadius: BorderRadius.circular(20)),
             child: Text('Combo ×${_combo.multiplier}', style: display(18, color: Colors.white)),
           ),
+        _PlayToggle(on: _playMode, onTap: () => _setPlayMode(!_playMode)),
+        const SizedBox(width: 14),
         CoinCount(_coins, size: 26),
       ],
+    );
+  }
+
+  /// Statt der Knöpfe: Suona hört zu. Zeigt, dass das Mikrofon an ist,
+  /// wie laut es ankommt und welchen Ton Suona gerade hört.
+  Widget _listenPanel({bool compact = false}) {
+    if (_micError != null) {
+      return _MicMessage(
+        text: _micError == 'permission'
+            ? tr(
+                'Suona darf das Mikrofon nicht benutzen. Erlaube es in den Einstellungen des Geräts, oder tippe die Antworten.',
+                'Suona may not use the microphone. Allow it in the device settings, or tap your answers.',
+              )
+            : tr(
+                'Das Mikrofon geht gerade nicht. Probier den Mikrofon-Test im Lehrerbereich, oder tippe die Antworten.',
+                'The microphone isn’t working right now. Try the mic test in the teacher area, or tap your answers.',
+              ),
+        onTap: () => _setPlayMode(false),
+      );
+    }
+    final prompt = switch (_q.type) {
+      QuestionType.fretFromStaff => tr('Spiel die Note auf deiner Gitarre (oder tippe die Stelle)', 'Play the note on your guitar (or tap the spot)'),
+      _ => tr('Spiel die Note auf deiner Gitarre!', 'Play the note on your guitar!'),
+    };
+    return ValueListenableBuilder<PitchReading>(
+      valueListenable: _live,
+      builder: (context, r, _) {
+        final level = (r.level * 8).clamp(0.0, 1.0);
+        final heard = _judge.heard;
+        return Container(
+          constraints: const BoxConstraints(maxWidth: 820),
+          padding: EdgeInsets.symmetric(horizontal: 18, vertical: compact ? 8 : 14),
+          decoration: BoxDecoration(color: SuonaColors.stageFloor, borderRadius: BorderRadius.circular(22)),
+          child: Row(
+            children: [
+              // Sichtbar: Das Mikrofon ist an.
+              Container(
+                width: compact ? 46 : 64,
+                height: compact ? 46 : 64,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _mic == null ? SuonaColors.stageLine : SuonaColors.red,
+                  boxShadow: [
+                    if (_mic != null)
+                      BoxShadow(color: SuonaColors.red.withValues(alpha: 0.6), blurRadius: 6 + 24 * level),
+                  ],
+                ),
+                child: Icon(Icons.mic_rounded, color: Colors.white, size: compact ? 28 : 38),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _mic == null ? tr('Mikrofon startet …', 'Starting microphone …') : prompt,
+                      style: display(compact ? 20 : 24, color: SuonaColors.onStage),
+                    ),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: LinearProgressIndicator(
+                        value: level,
+                        minHeight: 10,
+                        backgroundColor: SuonaColors.stage,
+                        color: SuonaColors.teal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              SizedBox(
+                width: compact ? 110 : 140,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(tr('Ich höre', 'I hear'), style: const TextStyle(color: SuonaColors.onStageMuted, fontSize: 14)),
+                    Text(
+                      heard == null ? '–' : pitchNameWithOctave(_spell(heard), _naming),
+                      style: display(compact ? 28 : 36, color: SuonaColors.spot),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -820,7 +991,7 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
         : _note;
     final name = pitchName(shownPitch, _naming);
     final withOctave = pitchNameWithOctave(shownPitch, _naming);
-    final timeout = !ok && _answeredLetter == null && _tapped == null && _placedStep == null;
+    final timeout = !ok && _answeredLetter == null && _tapped == null && _placedStep == null && _heardMidi == null;
     if (_shielded) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
@@ -835,8 +1006,17 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
         ),
       );
     }
+    final heard = _heardMidi == null ? null : _spell(_heardMidi!);
+    final octaveOff = heard != null && (_heardMidi! - _note.midi) % 12 == 0;
     final text = switch (_q.type) {
       _ when ok => '$name!',
+      _ when octaveOff => _heardMidi! > _note.midi
+          ? tr('Richtiger Ton, eine Oktave zu hoch', 'Right note, one octave too high')
+          : tr('Richtiger Ton, eine Oktave zu tief', 'Right note, one octave too low'),
+      _ when heard != null => tr(
+        'Du hast ${pitchName(heard, _naming)} gespielt, gesucht war $name',
+        'You played ${pitchName(heard, _naming)}, we wanted $name',
+      ),
       QuestionType.fretFromStaff => tr('Hier liegt das $name', 'Here is $name'),
       QuestionType.staffFromFret => tr('So steht das $name', 'This is how $name looks'),
       _ => tr('Das ist $name', 'That’s $name'),
@@ -1112,6 +1292,70 @@ class PedalButton extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+
+/// Schalter oben: mit der Gitarre antworten (Mikrofon) oder antippen.
+class _PlayToggle extends StatelessWidget {
+  const _PlayToggle({required this.on, required this.onTap});
+  final bool on;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: on
+          ? tr('Mit der Gitarre antworten: an', 'Answer with your guitar: on')
+          : tr('Mit der Gitarre antworten', 'Answer with your guitar'),
+      child: Material(
+        color: on ? SuonaColors.red : SuonaColors.stageFloor,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(on ? Icons.mic_rounded : Icons.mic_none_rounded, color: Colors.white, size: 26),
+                const SizedBox(width: 6),
+                Text(tr('Gitarre', 'Guitar'), style: display(18, color: Colors.white, weight: FontWeight.w700)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MicMessage extends StatelessWidget {
+  const _MicMessage({required this.text, required this.onTap});
+  final String text;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 820),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: SuonaColors.stageFloor, borderRadius: BorderRadius.circular(22)),
+      child: Row(
+        children: [
+          const Icon(Icons.mic_off_rounded, color: SuonaColors.coral, size: 40),
+          const SizedBox(width: 14),
+          Expanded(child: Text(text, style: const TextStyle(color: SuonaColors.onStage, fontSize: 17))),
+          const SizedBox(width: 12),
+          FilledButton(
+            onPressed: onTap,
+            style: FilledButton.styleFrom(backgroundColor: SuonaColors.spot, foregroundColor: SuonaColors.ink),
+            child: Text(tr('Antippen', 'Tap instead')),
+          ),
+        ],
       ),
     );
   }

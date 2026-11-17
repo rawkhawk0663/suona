@@ -7,14 +7,14 @@ Der Bauplan (fünf Pakete) liegt als Artifact „Suona Bauplan“ beim Besitzer.
 2. **Griffbrett** (fertig): vier Fragearten (`QuestionType`), Griffbrett-Übung auf der Startseite, Arcade mit Spielart, Lehrplan oder Saiten/Bünde, Vorzeichen, „Saite vorgeben“, Vorlagen.
 3. **Abenteuer** (fertig): Weltkarte mit 8 Stationen, je 5 Level + Auftritt, Publikums-Balken, Shop mit Kleidung, Gitarren und Pedalen, freies Aussehen, Abzeichen. Siehe „Abenteuer und Shop“.
 3+. **Akkord-Tour** (fertig, Wunsch des Besitzers): zweites Abenteuer mit Akkorden, von drei Saiten bis sechs. Siehe „Akkorde“.
-4. **Echt spielen**: Tonerkennung über das Mikrofon (Grundlage `MicListener`/`PitchDetector` ist da).
+4. **Echt spielen** (Teil 1 fertig): mit der Gitarre antworten (Schalter „Gitarre“ beim Üben). Offen: Stimmgerät, Akkorde per Mikrofon. Siehe „Echt spielen“.
 5. **Rhythmus, Tabs & Band**.
 
 ## Kinderschutz und Datenschutz (nie brechen)
 - **Keine Daten verlassen das Gerät.** Kein Konto, kein Server, keine Analyse, keine Absturzberichte nach aussen, keine Werbung, keine Käufe, keine Links nach aussen, kein Chat.
 - Ein Profil hat nur **Spitzname und Figur** (Luna oder Fuzz). Kein echter Name, kein Alter, keine Fotos. Statt des Alters wählt die Lehrperson eine **Stufe** (`Difficulty`), gespeichert wird nur die Stufe.
 - **Internet nur für „Nach Updates suchen“** im gesperrten Lehrerbereich, nur auf Knopfdruck. Suona sucht **nie** von selbst (anders als Volti).
-- **Mikrofon** nur im Mikrofon-Test und später in „Echt spielen“. Ton wird nur im Speicher ausgewertet, nie aufgenommen oder gespeichert. Sichtbar anzeigen, wann es an ist. Android fragt die Berechtigung erst beim Öffnen.
+- **Mikrofon** nur im Mikrofon-Test und wenn beim Üben der Schalter „Gitarre“ an ist („Echt spielen“). Ton wird nur im Speicher ausgewertet, nie aufgenommen oder gespeichert. Sichtbar anzeigen, wann es an ist. Android fragt die Berechtigung erst beim Öffnen.
 - **Lehrerbereich** hinter einer Rechenaufgabe (`teacher_gate.dart`). Löschen von Profilen nur dort.
 - **Fair belohnen:** keine Zufalls-Kisten, kein Druck. Verpasste Tage kosten nur die Zählung, nie Münzen. Streak-Schutz (alle 7 Tage einer, höchstens 2) rettet Lücken automatisch.
 - Datenschutz-Erklärung in zwei Fassungen (Kinder/Eltern): `features/teacher/privacy.dart`. Bei neuen Daten oder Berechtigungen dort nachtragen.
@@ -63,6 +63,11 @@ Der Bauplan (fünf Pakete) liegt als Artifact „Suona Bauplan“ beim Besitzer.
 - **Spielbildschirm** `features/chords/chord_quiz_screen.dart` (eigener, nicht `QuizScreen`), Akkord-Seite `chords_screen.dart` (Kachel „Akkorde“ auf der Startseite: Üben, Akkord-Tour, Akkord-Arcade mit Rekord `arcadeBests['chords']`). `ResultScreen` gilt für beide (`again`, `next`, `arcade`, `concert`).
 - Notensystem kann Akkorde (`StaffView(chord: true)`: Sekunden versetzt, Vorzeichen gestaffelt). Klang: `Sounds.strum` (Saiten 35 ms versetzt).
 - Lehrerbereich: pro Profil Akkord-Lehrplan, „Ist bei“, Stand der Tour und Lernstand (Erkennen/Griff bauen), „Akkord-Tour neu beginnen“; Akkord-Lehrpläne unter „Lehrpläne“ (`chord_curriculum_editor.dart`).
+
+## Echt spielen (Paket 4, Teil 1)
+- Schalter **„Gitarre“** oben im Übungsbildschirm (`_PlayToggle` in `quiz_screen.dart`), gilt in Üben, Arcade und Abenteuer, gespeichert pro Kind (`Profile.playWithGuitar`). Ist er an, läuft `MicListener`, und statt der Notenknöpfe steht ein Zuhör-Feld (rotes Mikrofon = an, Lautstärke, „Ich höre …“, `_listenPanel`). Startet das Mikrofon nicht (oder keine Erlaubnis), erscheint eine Erklärung mit „Antippen“.
+- Nur bei **Noten lesen** (`nameFromStaff`) und **Wo liegt die Note?** (`fretFromStaff`, Antippen geht weiter). Nicht bei „Welcher Ton ist das?“ (man müsste nur den Punkt nachspielen) und „Note setzen“.
+- **Schiedsrichter** `core/audio/note_judge.dart` (`NoteJudge`): richtig nach 3 klaren gleichen Werten (≈0,15 s), falsch nach 4 (≈0,2 s), 8 Werte Schonzeit nach jeder Frage, der Ton der letzten Frage zählt erst nach einer Pause wieder (nachklingende Saite, Ton der App), nur Töne im Gitarrenbereich und höchstens 40 Cent daneben. Die Oktave zählt; die Rückmeldung sagt „eine Oktave zu hoch/tief“ oder welcher Ton gespielt wurde. Getestet auch mit erzeugten gezupften Saiten.
 
 ## Lehrpläne
 - `Curriculum` = Schritte mit **neuen** Tönen. Eingebaut: guitarTALKS (Markus Engler), nur die Reihenfolge der Töne, keine Stücke oder Figuren aus dem Buch (Urheberrecht). Eigene Lehrpläne legt die Lehrperson an (`curriculum_editor.dart`), z. B. „Play Guitar Junior“ (macht der Besitzer selbst).
