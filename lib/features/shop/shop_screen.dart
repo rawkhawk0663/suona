@@ -10,7 +10,7 @@ import '../../core/character/look.dart';
 import '../../core/game/shop.dart';
 import '../../core/profiles/profile.dart';
 import '../../core/suona_state.dart';
-import '../../widgets/stage.dart';
+import '../../widgets/visuals.dart';
 
 /// Shop und Aussehen: links die Figur (mit dem gerade anprobierten Teil),
 /// rechts Farben und Shop-Teile. Bezahlt wird nur mit Spiel-Münzen.
@@ -96,9 +96,8 @@ class _ShopScreenState extends State<ShopScreen> {
           done
               ? tr('Set „${set.name}“ komplett! Neues Abzeichen!', '“${set.name}” set complete! New badge!')
               : tr('${item.name} gehört jetzt dir!', '${item.name} is yours now!'),
-          style: display(20),
+          style: display(18),
         ),
-        backgroundColor: SuonaColors.ok,
         duration: const Duration(seconds: 2),
       ),
     );
@@ -125,7 +124,10 @@ class _ShopScreenState extends State<ShopScreen> {
           },
         ),
     ];
-    final preview = Column(
+    final preview = SuonaCard(
+      radius: 24,
+      gradient: characterGlow(),
+      child: Column(
       children: [
         Expanded(child: CharacterView(_preview(p))),
         const SizedBox(height: 8),
@@ -135,34 +137,27 @@ class _ShopScreenState extends State<ShopScreen> {
                 ? tr('Du probierst: Set ${_tryingSet!.name}', 'Trying on: ${_tryingSet!.name} set')
                 : tr('Du probierst: ${_trying!.name}', 'Trying on: ${_trying!.name}'),
             textAlign: TextAlign.center,
-            style: display(20, color: SuonaColors.spot, weight: FontWeight.w700),
+            style: display(18, color: SuonaColors.muted, weight: FontWeight.w600),
           ),
       ],
+      ),
     );
     return DefaultTabController(
       length: tabs.length,
       initialIndex: widget.startTab,
       child: Scaffold(
-        body: StageBackground(
+        body: AppBackground(
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              padding: const EdgeInsets.fromLTRB(28, 20, 28, 24),
               child: Column(
                 children: [
-                  Row(
-                    children: [
-                      StageIconButton(
-                        icon: Icons.arrow_back_rounded,
-                        tooltip: tr('Zurück', 'Back'),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                      const SizedBox(width: 14),
-                      Text('Shop', style: display(40, color: SuonaColors.spot)),
-                      const Spacer(),
-                      CoinCount(p.coins, size: 30),
-                    ],
+                  ScreenHeader(
+                    title: 'Shop',
+                    subtitle: tr('Nur mit Spiel-Münzen, nie mit Geld', 'Game coins only, never real money'),
+                    trailing: [InfoPill(child: CoinCount(p.coins, size: 21))],
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 18),
                   Expanded(
                     child: LayoutBuilder(
                       builder: (context, c) {
@@ -171,12 +166,14 @@ class _ShopScreenState extends State<ShopScreen> {
                             TabBar(
                               isScrollable: true,
                               tabAlignment: TabAlignment.start,
-                              labelColor: SuonaColors.ink,
-                              unselectedLabelColor: SuonaColors.onStage,
-                              labelStyle: display(18, weight: FontWeight.w700),
+                              labelColor: Colors.white,
+                              unselectedLabelColor: SuonaColors.ink,
+                              labelStyle: display(16),
+                              unselectedLabelStyle: display(16, weight: FontWeight.w600),
+                              splashBorderRadius: BorderRadius.circular(999),
                               indicator: BoxDecoration(
-                                color: SuonaColors.spot,
-                                borderRadius: BorderRadius.circular(14),
+                                gradient: gradientOf(SuonaColors.brand, horizontal: true),
+                                borderRadius: BorderRadius.circular(999),
                               ),
                               indicatorSize: TabBarIndicatorSize.tab,
                               dividerColor: Colors.transparent,
@@ -221,7 +218,7 @@ class _ShopScreenState extends State<ShopScreen> {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               SizedBox(width: c.maxWidth * 0.32, child: preview),
-                              const SizedBox(width: 18),
+                              const SizedBox(width: 24),
                               Expanded(child: content),
                             ],
                           );
@@ -310,7 +307,7 @@ class _ShopScreenState extends State<ShopScreen> {
             'Sammle alle Teile eines Sets und bekomme ein Abzeichen!',
             'Collect every part of a set and earn a badge!',
           ),
-          style: const TextStyle(color: SuonaColors.onStageMuted, fontSize: 16),
+          style: body(16, color: SuonaColors.muted),
         ),
         const SizedBox(height: 12),
         for (final set in Shop.sets)
@@ -348,15 +345,17 @@ class _Hint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(color: SuonaColors.stageLine, borderRadius: BorderRadius.circular(14)),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: SuonaColors.card,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: SuonaColors.line),
+      ),
       child: Row(
         children: [
-          const Icon(Icons.info_outline_rounded, color: SuonaColors.spot),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(text, style: const TextStyle(color: SuonaColors.onStage, fontSize: 15.5)),
-          ),
+          GradientIcon(Icons.lightbulb_rounded, colors: SuonaColors.sky, size: 36),
+          const SizedBox(width: 12),
+          Expanded(child: Text(text, style: body(15.5))),
         ],
       ),
     );
@@ -388,10 +387,13 @@ class _SetCard extends StatelessWidget {
     final have = set.ownedBy(p);
     final done = have == set.items.length;
     return Material(
-      color: trying ? SuonaColors.stageLine : SuonaColors.stageFloor,
+      color: trying ? SuonaColors.cardHigh : SuonaColors.card,
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: done ? SuonaColors.ok : (trying ? SuonaColors.spot : Colors.transparent), width: 3),
+        borderRadius: BorderRadius.circular(22),
+        side: done || trying
+            ? BorderSide(color: done ? SuonaColors.ok : SuonaColors.accent, width: 3)
+            : BorderSide(color: SuonaColors.line),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
@@ -412,15 +414,15 @@ class _SetCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             set.name,
-                            style: display(26, color: SuonaColors.onStage, weight: FontWeight.w700),
+                            style: display(23),
                           ),
                         ),
                         if (done)
-                          const Icon(Icons.military_tech_rounded, color: SuonaColors.spot, size: 34)
+                          GradientIcon(Icons.military_tech_rounded, colors: SuonaColors.sun, size: 40, circle: true)
                         else
                           Text(
                             tr('$have von ${set.items.length}', '$have of ${set.items.length}'),
-                            style: display(20, color: SuonaColors.spot, weight: FontWeight.w700),
+                            style: body(17, color: SuonaColors.muted, weight: FontWeight.w600),
                           ),
                       ],
                     ),
@@ -432,14 +434,14 @@ class _SetCard extends StatelessWidget {
                           children: [
                             Icon(
                               Shop.owns(p, item) ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-                              color: Shop.owns(p, item) ? SuonaColors.ok : SuonaColors.onStageMuted,
+                              color: Shop.owns(p, item) ? SuonaColors.ok : SuonaColors.muted,
                               size: 24,
                             ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 item.name,
-                                style: const TextStyle(color: SuonaColors.onStage, fontSize: 17),
+                                style: body(17),
                               ),
                             ),
                             if (!Shop.owns(p, item))
@@ -448,8 +450,7 @@ class _SetCard extends StatelessWidget {
                                 child: p.coins >= item.price
                                     ? _Button(
                                         confirming == item.id ? tr('Ja, kaufen!', 'Yes, buy!') : tr('Kaufen', 'Buy'),
-                                        confirming == item.id ? SuonaColors.coral : SuonaColors.spot,
-                                        SuonaColors.ink,
+                                        confirming == item.id ? SuonaColors.brand : SuonaColors.sun,
                                         () => onBuy(item),
                                         coins: confirming == item.id ? null : item.price,
                                         compact: true,
@@ -461,7 +462,7 @@ class _SetCard extends StatelessWidget {
                                           const SizedBox(width: 4),
                                           Text(
                                             '${item.price}',
-                                            style: display(17, color: SuonaColors.onStageMuted),
+                                            style: body(16, color: SuonaColors.muted, weight: FontWeight.w600),
                                           ),
                                         ],
                                       ),
@@ -473,8 +474,7 @@ class _SetCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       _Button(
                         done ? tr('Ganzes Set anziehen', 'Wear the whole set') : tr('Meine Teile anziehen', 'Wear my parts'),
-                        SuonaColors.teal,
-                        Colors.white,
+                        SuonaColors.mint,
                         onWear,
                       ),
                     ],
@@ -531,29 +531,31 @@ class _ItemCard extends StatelessWidget {
     };
     Widget action;
     if (item.slot == ShopSlot.pedal && owned) {
-      action = _Pill(tr('Gehört dir', 'Yours'), SuonaColors.ok);
+      action = _Pill(tr('Gehört dir', 'Yours'), SuonaColors.mint);
     } else if (wearing) {
       action = onTakeOff == null
-          ? _Pill(tr('Trägst du', 'Wearing'), SuonaColors.ok)
-          : _Button(tr('Ausziehen', 'Take off'), SuonaColors.stageLine, SuonaColors.onStage, onTakeOff);
+          ? _Pill(tr('Trägst du', 'Wearing'), SuonaColors.mint)
+          : _Button(tr('Ausziehen', 'Take off'), null, onTakeOff);
     } else if (owned) {
-      action = _Button(tr('Anziehen', 'Wear'), SuonaColors.teal, Colors.white, onWear);
+      action = _Button(tr('Anziehen', 'Wear'), SuonaColors.mint, onWear);
     } else if (!canAfford) {
-      action = _Pill(tr('Noch $missing Münzen', '$missing coins to go'), SuonaColors.stageLine);
+      action = _Pill(tr('Noch $missing Münzen', '$missing coins to go'), null);
     } else {
       action = _Button(
         confirming ? tr('Ja, kaufen!', 'Yes, buy!') : tr('Kaufen', 'Buy'),
-        confirming ? SuonaColors.coral : SuonaColors.spot,
-        SuonaColors.ink,
+        confirming ? SuonaColors.brand : SuonaColors.sun,
         onBuy,
         coins: confirming ? null : item.price,
       );
     }
     return Material(
-      color: trying ? SuonaColors.stageLine : SuonaColors.stageFloor,
+      color: trying ? SuonaColors.cardHigh : SuonaColors.card,
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: wearing ? SuonaColors.ok : (trying ? SuonaColors.spot : Colors.transparent), width: 3),
+        borderRadius: BorderRadius.circular(22),
+        side: wearing || trying
+            ? BorderSide(color: wearing ? SuonaColors.ok : SuonaColors.accent, width: 3)
+            : BorderSide(color: SuonaColors.line),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
@@ -564,7 +566,7 @@ class _ItemCard extends StatelessWidget {
             children: [
               Expanded(
                 child: look == null
-                    ? Icon(pedalIcon, size: 90, color: SuonaColors.spot)
+                    ? Center(child: GradientIcon(pedalIcon, colors: SuonaColors.sun, size: 96))
                     : CharacterView(look!, bust: face, guitar: guitarView),
               ),
               const SizedBox(height: 6),
@@ -572,13 +574,13 @@ class _ItemCard extends StatelessWidget {
                 item.name,
                 textAlign: TextAlign.center,
                 maxLines: 2,
-                style: display(18, color: SuonaColors.onStage, weight: FontWeight.w700),
+                style: display(17),
               ),
               if (item.help.isNotEmpty)
                 Text(
                   item.help,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: SuonaColors.onStageMuted, fontSize: 12.5, height: 1.25),
+                  style: body(12.5, color: SuonaColors.muted, height: 1.25),
                 ),
               const SizedBox(height: 8),
               action,
@@ -590,38 +592,58 @@ class _ItemCard extends StatelessWidget {
   }
 }
 
+/// Knopf in einer Karte: Verlauf (kaufen, anziehen) oder ruhig ([colors] null).
 class _Button extends StatelessWidget {
-  const _Button(this.label, this.bg, this.fg, this.onTap, {this.coins, this.compact = false});
+  const _Button(this.label, this.colors, this.onTap, {this.coins, this.compact = false});
   final String label;
-  final Color bg;
-  final Color fg;
+  final List<Color>? colors;
   final VoidCallback? onTap;
   final int? coins;
   final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    final plain = colors == null;
+    final fg = plain ? SuonaColors.ink : Colors.white;
+    final height = compact ? 40.0 : 46.0;
+    return Container(
       width: double.infinity,
-      child: FilledButton(
-        onPressed: onTap,
-        style: FilledButton.styleFrom(
-          backgroundColor: bg,
-          foregroundColor: fg,
-          padding: EdgeInsets.symmetric(vertical: compact ? 6 : 10),
-          textStyle: display(compact ? 16 : 18),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(label),
-            if (coins != null) ...[
-              const SizedBox(width: 10),
-              const CoinIcon(size: 18),
-              const SizedBox(width: 4),
-              Text('$coins'),
+      height: height,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(height),
+        gradient: plain ? null : gradientOf(colors!, horizontal: true),
+        color: plain ? SuonaColors.cardHigh : null,
+        border: plain ? Border.all(color: SuonaColors.line) : null,
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(height),
+          onTap: onTap,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: display(compact ? 15 : 16, color: fg),
+                ),
+              ),
+              if (coins != null) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text('$coins', style: display(compact ? 14 : 15, color: fg)),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -629,20 +651,26 @@ class _Button extends StatelessWidget {
 }
 
 class _Pill extends StatelessWidget {
-  const _Pill(this.label, this.color);
+  const _Pill(this.label, this.colors);
   final String label;
-  final Color color;
+  final List<Color>? colors;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(14)),
+      height: 46,
+      decoration: BoxDecoration(
+        gradient: colors == null ? null : gradientOf(colors!, horizontal: true),
+        color: colors == null ? SuonaColors.cardHigh : null,
+        borderRadius: BorderRadius.circular(999),
+      ),
       alignment: Alignment.center,
       child: Text(
         label,
-        style: display(17, color: Colors.white, weight: FontWeight.w700),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: display(15, color: colors == null ? SuonaColors.muted : Colors.white),
       ),
     );
   }
@@ -665,7 +693,7 @@ class _LooksTab extends StatelessWidget {
           children: [
             Text(
               title,
-              style: display(22, color: SuonaColors.onStage, weight: FontWeight.w700),
+              style: display(20),
             ),
             const SizedBox(height: 8),
             Wrap(
@@ -685,8 +713,8 @@ class _LooksTab extends StatelessWidget {
                           shape: BoxShape.circle,
                           color: Color(s.argb),
                           border: Border.all(
-                            color: s.key == current ? SuonaColors.spot : SuonaColors.stageLine,
-                            width: s.key == current ? 5 : 3,
+                            color: s.key == current ? SuonaColors.accent : SuonaColors.line,
+                            width: s.key == current ? 4 : 2,
                           ),
                         ),
                         child: s.key == current ? const Icon(Icons.check_rounded, color: Colors.white, size: 28) : null,
@@ -705,7 +733,7 @@ class _LooksTab extends StatelessWidget {
       children: [
         Text(
           tr('Farben kosten nichts. Probier aus!', 'Colours are free. Try them out!'),
-          style: const TextStyle(color: SuonaColors.onStageMuted, fontSize: 16),
+          style: body(16, color: SuonaColors.muted),
         ),
         const SizedBox(height: 12),
         row(tr('Haut', 'Skin'), 'skin', Palettes.skin, look.skin, (k) => look.copyWith(skin: k)),
@@ -719,10 +747,10 @@ class _LooksTab extends StatelessWidget {
               final d = CharacterLook.defaults(look.character);
               onChange(look.copyWith(skin: d.skin, hair: d.hair, eyes: d.eyes, shirt: d.shirt));
             },
-            icon: const Icon(Icons.restart_alt_rounded, color: SuonaColors.onStageMuted),
+            icon: Icon(Icons.restart_alt_rounded, color: SuonaColors.muted),
             label: Text(
               tr('Grundfarben', 'Original colours'),
-              style: const TextStyle(color: SuonaColors.onStageMuted, fontSize: 16),
+              style: body(16, color: SuonaColors.muted),
             ),
           ),
         ),

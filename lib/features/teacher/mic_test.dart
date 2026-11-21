@@ -103,7 +103,7 @@ class _MicTestPanelState extends State<MicTestPanel> {
             if (_mic.running)
               Row(
                 children: [
-                  const Icon(Icons.fiber_manual_record_rounded, color: SuonaColors.red, size: 16),
+                  Icon(Icons.fiber_manual_record_rounded, color: SuonaColors.accent, size: 16),
                   const SizedBox(width: 4),
                   Text(tr('Mikrofon ist an', 'Microphone is on')),
                 ],
@@ -122,7 +122,7 @@ class _MicTestPanelState extends State<MicTestPanel> {
                     'Das Mikrofon liess sich nicht starten. Unter Windows: Einstellungen → Datenschutz → Mikrofon → Desktop-Apps erlauben. ($_error)',
                     'The microphone could not be started. On Windows: Settings → Privacy → Microphone → allow desktop apps. ($_error)',
                   ),
-            style: const TextStyle(color: SuonaColors.wrong),
+            style: TextStyle(color: SuonaColors.wrong),
           ),
         ],
         const SizedBox(height: 24),
@@ -133,7 +133,7 @@ class _MicTestPanelState extends State<MicTestPanel> {
               children: [
                 Text(
                   shown == null ? '–' : _nameOf(shown.midi, naming),
-                  style: display(84, color: inRange ? SuonaColors.ink : SuonaColors.inkMuted),
+                  style: display(84, color: inRange ? SuonaColors.ink : SuonaColors.muted),
                 ),
                 Text(
                   shown == null
@@ -179,7 +179,7 @@ class _MicTestPanelState extends State<MicTestPanel> {
             'Leere Saiten zum Vergleich: E (82 Hz), A (110 Hz), d (147 Hz), g (196 Hz), h (247 Hz), e\' (330 Hz).',
             'Open strings for comparison: E2 (82 Hz), A2 (110 Hz), D3 (147 Hz), G3 (196 Hz), B3 (247 Hz), E4 (330 Hz).',
           ),
-          style: theme.textTheme.bodyMedium?.copyWith(color: SuonaColors.inkMuted),
+          style: theme.textTheme.bodyMedium?.copyWith(color: SuonaColors.muted),
         ),
       ],
     );
@@ -233,7 +233,7 @@ class _CentsMeter extends StatelessWidget {
                     width: 10,
                     height: 38,
                     decoration: BoxDecoration(
-                      color: ok ? SuonaColors.ok : SuonaColors.red,
+                      color: ok ? SuonaColors.ok : SuonaColors.accent,
                       borderRadius: BorderRadius.circular(5),
                     ),
                   ),

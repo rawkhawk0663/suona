@@ -64,29 +64,31 @@ flutter:
   uses-material-design: true
   assets:
     - assets/characters/
+    - assets/brand/suona_icon.png
     # Lizenztexte der Schriften (erscheinen im Lehrerbereich unter „Lizenzen“)
     - assets/fonts/OFL-Bravura.txt
-    - assets/fonts/OFL-Baloo2.txt
-    - assets/fonts/OFL-AtkinsonHyperlegible.txt
+    - assets/fonts/OFL-Sora.txt
+    - assets/fonts/OFL-IBMPlexSans.txt
   # Schriften (SIL Open Font License, siehe assets/fonts/OFL-*.txt)
   fonts:
-    # Überschriften und Knöpfe
-    - family: Baloo
+    # Überschriften, Knöpfe und Zahlen (wie Volti und Conti)
+    - family: Sora
       fonts:
-        - asset: assets/fonts/Baloo2-600.ttf
+        - asset: assets/fonts/Sora-SemiBold.ttf
           weight: 600
-        - asset: assets/fonts/Baloo2-700.ttf
+        - asset: assets/fonts/Sora-Bold.ttf
           weight: 700
-        - asset: assets/fonts/Baloo2-800.ttf
-          weight: 800
-    # Fliesstext: besonders gut lesbar, auch für Leseanfänger
-    - family: Atkinson
+    # Text
+    - family: Plex
       fonts:
-        - asset: assets/fonts/AtkinsonHyperlegible-400.ttf
-        - asset: assets/fonts/AtkinsonHyperlegible-700.ttf
-          weight: 700
-        - asset: assets/fonts/AtkinsonHyperlegible-400i.ttf
-          style: italic
+        - asset: assets/fonts/IBMPlexSans-Light.ttf
+          weight: 300
+        - asset: assets/fonts/IBMPlexSans-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/IBMPlexSans-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/IBMPlexSans-SemiBold.ttf
+          weight: 600
     # Notenzeichen (SMuFL)
     - family: Bravura
       fonts:

@@ -10,7 +10,7 @@ import '../../core/music/pitch.dart';
 import '../../core/profiles/profile.dart';
 import '../../core/suona_state.dart';
 import '../../widgets/fretboard.dart';
-import '../../widgets/stage.dart';
+import '../../widgets/visuals.dart';
 import '../quiz/quiz_screen.dart';
 import '../teacher/teacher_gate.dart';
 
@@ -111,23 +111,20 @@ class _ArcadeSetupScreenState extends State<ArcadeSetupScreen> {
     final record = profile.arcadeBests[_s.answer.name] ?? 0;
 
     return Scaffold(
-      body: StageBackground(
+      body: AppBackground(
         child: SafeArea(
           child: Stack(
             children: [
               Center(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(24, 20, 24, 90),
+                  padding: const EdgeInsets.fromLTRB(28, 20, 28, 60),
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 820),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text(
-                          'Arcade',
-                          textAlign: TextAlign.center,
-                          style: display(54, color: SuonaColors.spot),
-                        ),
+                        ScreenHeader(title: 'Arcade', subtitle: tr('Endlos spielen, bis 3 Fehler', 'Endless play until 3 mistakes')),
+                        const SizedBox(height: 18),
                         Text(
                           record > 0
                               ? tr(
@@ -139,9 +136,9 @@ class _ArcadeSetupScreenState extends State<ArcadeSetupScreen> {
                                   'No record at “${_s.answer.label}” yet',
                                 ),
                           textAlign: TextAlign.center,
-                          style: display(20, color: SuonaColors.onStage, weight: FontWeight.w700),
+                          style: body(17, color: SuonaColors.muted, weight: FontWeight.w600),
                         ),
-                        const SizedBox(height: 18),
+                        const SizedBox(height: 14),
                         _presets(state),
                         const SizedBox(height: 22),
                         _label(tr('Was willst du spielen?', 'What do you want to play?')),
@@ -157,42 +154,28 @@ class _ArcadeSetupScreenState extends State<ArcadeSetupScreen> {
                         _speeds(),
                         const SizedBox(height: 28),
                         Center(
-                          child: FilledButton.icon(
+                          child: GradientButton(
+                            label: tr('Los!', 'Go!'),
+                            icon: Icons.play_arrow_rounded,
+                            height: 66,
+                            fontSize: 26,
                             onPressed: pool.isEmpty ? null : () => _start(state, profile, pool),
-                            icon: const Icon(Icons.play_arrow_rounded, size: 34),
-                            label: Text(tr('Los!', 'Go!')),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: SuonaColors.spot,
-                              foregroundColor: SuonaColors.ink,
-                              disabledBackgroundColor: SuonaColors.stageFloor,
-                              textStyle: display(30),
-                              padding: const EdgeInsets.symmetric(horizontal: 44, vertical: 16),
-                            ),
                           ),
                         ),
                         const SizedBox(height: 10),
                         Center(
                           child: TextButton.icon(
                             onPressed: () => _savePreset(state),
-                            icon: const Icon(Icons.bookmark_add_outlined, color: SuonaColors.onStageMuted),
+                            icon: Icon(Icons.bookmark_add_outlined, color: SuonaColors.muted),
                             label: Text(
                               tr('Als Vorlage speichern (Lehrperson)', 'Save as preset (teacher)'),
-                              style: const TextStyle(color: SuonaColors.onStageMuted, fontSize: 15),
+                              style: body(15, color: SuonaColors.muted),
                             ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                ),
-              ),
-              Positioned(
-                top: 12,
-                left: 12,
-                child: StageIconButton(
-                  icon: Icons.arrow_back_rounded,
-                  tooltip: tr('Zurück', 'Back'),
-                  onPressed: () => Navigator.of(context).pop(),
                 ),
               ),
             ],
@@ -204,7 +187,7 @@ class _ArcadeSetupScreenState extends State<ArcadeSetupScreen> {
 
   Widget _label(String text) => Text(
     text,
-    style: display(24, color: SuonaColors.onStage, weight: FontWeight.w700),
+    style: display(21),
   );
 
   Widget _presets(SuonaState state) {
@@ -218,14 +201,9 @@ class _ArcadeSetupScreenState extends State<ArcadeSetupScreen> {
             avatar: Icon(
               p.builtIn ? Icons.auto_awesome_rounded : Icons.bookmark_rounded,
               size: 18,
-              color: SuonaColors.spot,
+              color: SuonaColors.accent,
             ),
-            label: Text(
-              p.name,
-              style: display(17, color: SuonaColors.onStage, weight: FontWeight.w700),
-            ),
-            backgroundColor: SuonaColors.stageFloor,
-            side: const BorderSide(color: SuonaColors.stageLine),
+            label: Text(p.name, style: body(16, weight: FontWeight.w600)),
             onPressed: () => setState(() => _s = p.applyTo(_s)),
           ),
       ],
@@ -247,25 +225,16 @@ class _ArcadeSetupScreenState extends State<ArcadeSetupScreen> {
         for (final a in ArcadeAnswer.values)
           SizedBox(
             width: 152,
-            height: 124,
+            height: 142,
             child: _Choice(
               selected: _s.answer == a,
-              color: SuonaColors.violet,
               onTap: () => _set((s) => s.answer = a),
               child: Column(
                 children: [
-                  Icon(icon(a), size: 32, color: SuonaColors.onStage),
-                  const SizedBox(height: 2),
-                  Text(
-                    a.label,
-                    textAlign: TextAlign.center,
-                    style: display(18, color: SuonaColors.onStage),
-                  ),
-                  Text(
-                    a.help,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: SuonaColors.onStageMuted, fontSize: 13),
-                  ),
+                  GradientIcon(icon(a), colors: SuonaColors.brand, size: 40),
+                  const SizedBox(height: 6),
+                  Text(a.label, textAlign: TextAlign.center, style: display(16)),
+                  Text(a.help, textAlign: TextAlign.center, style: body(12.5, color: SuonaColors.muted)),
                 ],
               ),
             ),
@@ -281,20 +250,13 @@ class _ArcadeSetupScreenState extends State<ArcadeSetupScreen> {
     final naming = state.naming;
     final names = naming == NoteNaming.german ? Guitar.stringNamesGerman : Guitar.stringNamesInternational;
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      decoration: BoxDecoration(color: SuonaColors.stageFloor, borderRadius: BorderRadius.circular(20)),
+    return SuonaCard(
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SegmentedButton<bool>(
-            style: SegmentedButton.styleFrom(
-              backgroundColor: SuonaColors.stage,
-              foregroundColor: SuonaColors.onStage,
-              selectedBackgroundColor: SuonaColors.spot,
-              selectedForegroundColor: SuonaColors.ink,
-              textStyle: display(17, weight: FontWeight.w700),
-            ),
+            showSelectedIcon: false,
             segments: [
               ButtonSegment(value: true, label: Text(tr('Aus meinem Lehrplan', 'From my curriculum'))),
               ButtonSegment(value: false, label: Text(tr('Saiten und Bünde', 'Strings and frets'))),
@@ -306,11 +268,11 @@ class _ArcadeSetupScreenState extends State<ArcadeSetupScreen> {
           if (_s.byCurriculum) ...[
             Text(
               '${tr('Bis', 'Up to')} ${tr('Schritt', 'step')} ${upTo + 1}: ${c.steps[upTo].title}',
-              style: display(22, color: SuonaColors.onStage, weight: FontWeight.w700),
+              style: display(20),
             ),
             Text(
               tr('${pool.length} Töne aus „${c.name}“', '${pool.length} notes from “${c.name}”'),
-              style: const TextStyle(color: SuonaColors.onStageMuted, fontSize: 15),
+              style: body(15, color: SuonaColors.muted),
             ),
             if (maxStep > 0)
               Slider(
@@ -318,8 +280,6 @@ class _ArcadeSetupScreenState extends State<ArcadeSetupScreen> {
                 min: 0,
                 max: maxStep.toDouble(),
                 divisions: maxStep,
-                activeColor: SuonaColors.spot,
-                inactiveColor: SuonaColors.stageLine,
                 label: c.steps[upTo].title,
                 onChanged: (v) => _set((s) => s.upToStep = v.round()),
               ),
@@ -331,21 +291,17 @@ class _ArcadeSetupScreenState extends State<ArcadeSetupScreen> {
               children: [
                 Text(
                   tr('Saiten:', 'Strings:'),
-                  style: display(19, color: SuonaColors.onStage, weight: FontWeight.w700),
+                  style: display(18),
                 ),
                 for (var string = 1; string <= 6; string++)
                   FilterChip(
                     label: Text(
                       names[string - 1],
-                      style: display(
-                        18,
-                        color: _s.range.strings.contains(string) ? SuonaColors.ink : SuonaColors.onStage,
-                      ),
+                      style: display(17, color: _s.range.strings.contains(string) ? Colors.white : SuonaColors.ink),
                     ),
                     selected: _s.range.strings.contains(string),
                     showCheckmark: false,
-                    selectedColor: SuonaColors.spot,
-                    backgroundColor: SuonaColors.stageLine,
+                    selectedColor: SuonaColors.accent,
                     onSelected: (on) => _set((s) {
                       final next = {...s.range.strings};
                       on ? next.add(string) : next.remove(string);
@@ -364,15 +320,13 @@ class _ArcadeSetupScreenState extends State<ArcadeSetupScreen> {
                       'Bund ${_s.range.minFret} bis ${_s.range.maxFret}',
                       'Frets ${_s.range.minFret} to ${_s.range.maxFret}',
                     ),
-              style: display(19, color: SuonaColors.onStage, weight: FontWeight.w700),
+              style: display(18),
             ),
             RangeSlider(
               values: RangeValues(_s.range.minFret.toDouble(), _s.range.maxFret.toDouble()),
               min: 0,
               max: Guitar.maxFret.toDouble(),
               divisions: Guitar.maxFret,
-              activeColor: SuonaColors.spot,
-              inactiveColor: SuonaColors.stageLine,
               labels: RangeLabels('${_s.range.minFret}', '${_s.range.maxFret}'),
               onChanged: (v) => _set(
                 (s) => s.range = FretRange(strings: s.range.strings, minFret: v.start.round(), maxFret: v.end.round()),
@@ -396,7 +350,7 @@ class _ArcadeSetupScreenState extends State<ArcadeSetupScreen> {
             ),
             Text(
               tr('${pool.length} Töne', '${pool.length} notes'),
-              style: const TextStyle(color: SuonaColors.onStageMuted, fontSize: 15),
+              style: body(15, color: SuonaColors.muted),
             ),
           ],
           if (_canFixString)
@@ -415,10 +369,9 @@ class _ArcadeSetupScreenState extends State<ArcadeSetupScreen> {
       contentPadding: EdgeInsets.zero,
       title: Text(
         label,
-        style: display(18, color: SuonaColors.onStage, weight: FontWeight.w700),
+        style: body(17, weight: FontWeight.w600),
       ),
       value: value,
-      activeThumbColor: SuonaColors.spot,
       onChanged: onChanged,
     );
   }
@@ -437,20 +390,19 @@ class _ArcadeSetupScreenState extends State<ArcadeSetupScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 5),
               child: _Choice(
                 selected: _s.speed == sp,
-                color: SuonaColors.violet,
                 onTap: () => _set((s) => s.speed = sp),
                 child: Column(
                   children: [
-                    Icon(icon(sp), size: 34, color: SuonaColors.onStage),
+                    GradientIcon(icon(sp), colors: SuonaColors.sky, size: 42),
                     const SizedBox(height: 4),
                     Text(
                       sp.label,
-                      style: display(19, color: SuonaColors.onStage, weight: FontWeight.w700),
+                      style: display(18),
                     ),
                     if (sp.limit != null)
                       Text(
                         tr('${sp.limit!.inSeconds} s pro Ton', '${sp.limit!.inSeconds} s per note'),
-                        style: const TextStyle(color: SuonaColors.onStageMuted, fontSize: 13),
+                        style: body(13, color: SuonaColors.muted),
                       ),
                   ],
                 ),
@@ -463,25 +415,18 @@ class _ArcadeSetupScreenState extends State<ArcadeSetupScreen> {
 }
 
 class _Choice extends StatelessWidget {
-  const _Choice({required this.selected, required this.color, required this.onTap, required this.child});
+  const _Choice({required this.selected, required this.onTap, required this.child});
   final bool selected;
-  final Color color;
   final VoidCallback onTap;
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: selected ? color : SuonaColors.stageFloor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: BorderSide(color: selected ? SuonaColors.spot : Colors.transparent, width: 3),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: onTap,
-        child: Padding(padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6), child: child),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => ChoiceCard(
+    selected: selected,
+    onTap: onTap,
+    glow: false,
+    radius: 20,
+    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+    child: child,
+  );
 }

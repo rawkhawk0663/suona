@@ -5,7 +5,7 @@ import '../../app/theme.dart';
 import '../../core/game/rewards.dart';
 import '../../core/profiles/profile.dart';
 import '../../core/suona_state.dart';
-import '../../widgets/stage.dart';
+import '../../widgets/visuals.dart';
 
 /// Ergebnis eines Abenteuer-Levels.
 class AdventureOutcome {
@@ -93,16 +93,22 @@ class ResultScreen extends StatelessWidget {
     final state = SuonaScope.of(context);
     final profile = state.profiles.where((p) => p.id == profileId).firstOrNull;
     return Scaffold(
-      body: StageBackground(
+      body: AppBackground(
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: Column(
                 children: [
-                  if (profile != null) SizedBox(height: 210, child: CharacterView(profile.look)),
+                  if (profile != null)
+                    Container(
+                      width: 320,
+                      height: 230,
+                      decoration: BoxDecoration(gradient: characterGlow(strength: 1.2)),
+                      child: CharacterView(profile.look),
+                    ),
                   const SizedBox(height: 10),
-                  Text(_headline, style: display(48, color: SuonaColors.spot)),
+                  Text(_headline, textAlign: TextAlign.center, style: display(44)),
                   const SizedBox(height: 8),
                   if (!_arcade)
                     Row(
@@ -111,23 +117,23 @@ class ResultScreen extends StatelessWidget {
                         for (var i = 0; i < 3; i++)
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: Icon(
-                              Icons.star_rounded,
-                              size: i == 1 ? 74 : 60,
-                              color: i < stars ? SuonaColors.spot : SuonaColors.stageFloor,
-                            ),
+                            child: i < stars
+                                ? GradientTint(
+                                    colors: SuonaColors.sun,
+                                    child: Icon(Icons.star_rounded, size: i == 1 ? 78 : 62, color: Colors.white),
+                                  )
+                                : Icon(Icons.star_rounded, size: i == 1 ? 78 : 62, color: SuonaColors.muted.withValues(alpha: 0.3)),
                           ),
                       ],
                     ),
                   const SizedBox(height: 8),
                   Text(
                     tr('$correct von $total richtig', '$correct of $total right'),
-                    style: display(28, color: SuonaColors.onStage, weight: FontWeight.w700),
+                    style: display(24, color: SuonaColors.muted, weight: FontWeight.w600),
                   ),
                   const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-                    decoration: BoxDecoration(color: SuonaColors.stageFloor, borderRadius: BorderRadius.circular(20)),
+                  SuonaCard(
+                    padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 14),
                     child: Column(
                       children: [
                         CoinCount(coins, size: 34),
@@ -136,7 +142,7 @@ class ResultScreen extends StatelessWidget {
                             adventure != null
                                 ? tr('davon $bonus Bonus fürs erste Mal', 'incl. $bonus first-time bonus')
                                 : tr('davon $bonus Sterne-Bonus', 'incl. $bonus star bonus'),
-                            style: const TextStyle(color: SuonaColors.onStageMuted, fontSize: 15),
+                            style: body(15, color: SuonaColors.muted),
                           ),
                       ],
                     ),
@@ -151,7 +157,7 @@ class ResultScreen extends StatelessWidget {
                         Flexible(
                           child: Text(
                             _streakText!,
-                            style: display(21, color: SuonaColors.onStage, weight: FontWeight.w700),
+                            style: display(20),
                           ),
                         ),
                       ],
@@ -170,7 +176,7 @@ class ResultScreen extends StatelessWidget {
                               'You need 6 out of 10 right for a star.',
                             ),
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: SuonaColors.onStageMuted, fontSize: 17),
+                      style: body(17, color: SuonaColors.muted),
                     ),
                   ],
                   const SizedBox(height: 28),
@@ -181,31 +187,20 @@ class ResultScreen extends StatelessWidget {
                     children: [
                       if (adventure != null && adventure!.passed && profile != null && next != null)
                         ?next!(context, state, profile),
-                      FilledButton.icon(
-                        onPressed: () => Navigator.of(context).pushReplacement(
-                          MaterialPageRoute<void>(
-                            builder: again,
-                          ),
-                        ),
-                        icon: const Icon(Icons.replay_rounded, size: 28),
-                        label: Text(tr('Nochmal', 'Again')),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: SuonaColors.spot,
-                          foregroundColor: SuonaColors.ink,
-                          textStyle: display(24),
-                          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                        ),
+                      GradientButton(
+                        label: tr('Nochmal', 'Again'),
+                        icon: Icons.replay_rounded,
+                        height: 60,
+                        fontSize: 21,
+                        onPressed: () => Navigator.of(context).pushReplacement(MaterialPageRoute<void>(builder: again)),
                       ),
-                      FilledButton.icon(
+                      GradientButton(
+                        label: adventure != null ? tr('Zur Karte', 'To the map') : tr('Fertig', 'Done'),
+                        icon: adventure != null ? Icons.map_rounded : Icons.home_rounded,
+                        secondary: true,
+                        height: 60,
+                        fontSize: 21,
                         onPressed: () => Navigator.of(context).pop(),
-                        icon: Icon(adventure != null ? Icons.map_rounded : Icons.home_rounded, size: 28),
-                        label: Text(adventure != null ? tr('Zur Karte', 'To the map') : tr('Fertig', 'Done')),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: SuonaColors.stageLine,
-                          foregroundColor: SuonaColors.onStage,
-                          textStyle: display(24),
-                          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                        ),
                       ),
                     ],
                   ),

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/l10n.dart';
 import '../../app/theme.dart';
 import '../../core/suona_state.dart';
-import '../../widgets/stage.dart';
+import '../../widgets/visuals.dart';
 import '../adventure/adventure_map_screen.dart';
 import 'chord_launch.dart';
 import 'chord_quiz_screen.dart';
@@ -18,7 +18,7 @@ class ChordsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = SuonaScope.of(context);
     final p = state.profiles.where((x) => x.id == profileId).firstOrNull;
-    if (p == null) return const Scaffold(backgroundColor: SuonaColors.stage);
+    if (p == null) return const Scaffold();
     final pool = state.chordPool(p);
     final strings = state.chordStrings(p);
     final best = p.arcadeBests[ChordQuizConfig.recordKey] ?? 0;
@@ -27,29 +27,34 @@ class ChordsScreen extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        StageTile(
+        MenuTile(
+          compact: true,
           title: tr('Üben', 'Practise'),
           subtitle: tr('Erkennen, Griffe bauen, aus den Noten', 'Recognise, build shapes, read the notes'),
           icon: Icons.school_rounded,
-          color: SuonaColors.red,
+          colors: SuonaColors.mint,
+          locked: pool.isEmpty,
           onTap: pool.isEmpty ? null : () => open(ChordQuizScreen(profileId: p.id, config: chordPracticeConfig(state, p))),
         ),
         const SizedBox(height: 14),
-        StageTile(
+        MenuTile(
+          compact: true,
           title: tr('Akkord-Tour', 'Chord tour'),
           subtitle: tr('Vom Lagerfeuer zum grossen Finale', 'From the campfire to the grand finale'),
           icon: Icons.airport_shuttle_rounded,
-          color: SuonaColors.coral,
+          colors: SuonaColors.brand,
           onTap: () => open(AdventureMapScreen(profileId: p.id, tour: const ChordTourSpec())),
         ),
         const SizedBox(height: 14),
-        StageTile(
+        MenuTile(
+          compact: true,
           title: tr('Akkord-Arcade', 'Chord arcade'),
           subtitle: best > 0
               ? tr('Endlos spielen · Rekord $best', 'Endless play · Best $best')
               : tr('Endlos spielen, bis 3 Fehler', 'Endless play until 3 mistakes'),
           icon: Icons.bolt_rounded,
-          color: SuonaColors.violet,
+          colors: SuonaColors.sun,
+          locked: pool.isEmpty,
           onTap: pool.isEmpty ? null : () => open(ChordQuizScreen(profileId: p.id, config: chordArcadeConfig(state, p))),
         ),
       ],
@@ -59,14 +64,14 @@ class ChordsScreen extends StatelessWidget {
       children: [
         Text(
           tr('Deine Akkorde', 'Your chords'),
-          style: display(24, color: SuonaColors.onStage, weight: FontWeight.w700),
+          style: display(22),
         ),
         const SizedBox(height: 8),
         Expanded(
           child: pool.isEmpty
               ? Text(
                   tr('Deine Lehrperson wählt deine Akkorde aus.', 'Your teacher picks your chords.'),
-                  style: const TextStyle(color: SuonaColors.onStageMuted, fontSize: 17),
+                  style: body(17, color: SuonaColors.muted),
                 )
               : SingleChildScrollView(
                   child: Wrap(
@@ -81,26 +86,18 @@ class ChordsScreen extends StatelessWidget {
       ],
     );
     return Scaffold(
-      body: StageBackground(
+      body: AppBackground(
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            padding: const EdgeInsets.fromLTRB(28, 20, 28, 24),
             child: Column(
               children: [
-                Row(
-                  children: [
-                    StageIconButton(
-                      icon: Icons.arrow_back_rounded,
-                      tooltip: tr('Zurück', 'Back'),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                    const SizedBox(width: 14),
-                    Text(tr('Akkorde', 'Chords'), style: display(40, color: SuonaColors.spot)),
-                    const Spacer(),
-                    CoinCount(p.coins, size: 26),
-                  ],
+                ScreenHeader(
+                  title: tr('Akkorde', 'Chords'),
+                  subtitle: tr('Griffe, Akkord-Tour und Arcade', 'Shapes, chord tour and arcade'),
+                  trailing: [InfoPill(child: CoinCount(p.coins, size: 21))],
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 22),
                 Expanded(
                   child: LayoutBuilder(
                     builder: (context, c) {

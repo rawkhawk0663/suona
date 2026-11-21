@@ -21,7 +21,8 @@ import '../../core/music/pitch.dart';
 import '../../core/profiles/profile.dart';
 import '../../core/suona_state.dart';
 import '../../widgets/fretboard.dart';
-import '../../widgets/stage.dart';
+import '../../widgets/game_parts.dart';
+import '../../widgets/visuals.dart';
 import '../../widgets/staff.dart';
 import '../adventure/adventure_launch.dart';
 import 'result_screen.dart';
@@ -494,11 +495,10 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
       autofocus: true,
       onKeyEvent: _onKey,
       child: Scaffold(
-        body: StageBackground(
-          floor: false,
+        body: AppBackground(
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              padding: const EdgeInsets.fromLTRB(28, 20, 28, 24),
               child: Column(
                 children: [
                   _header(),
@@ -575,20 +575,12 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
   }
 
   Color get _noteColor => switch (_phase) {
-    _Phase.asking => SuonaColors.ink,
-    _Phase.correct => SuonaColors.okDeep,
-    _Phase.wrong => SuonaColors.wrong,
+    _Phase.asking => SuonaColors.paperInk,
+    _Phase.correct => SuonaColors.paperOk,
+    _Phase.wrong => SuonaColors.paperWrong,
   };
 
-  Widget _paper({required Widget child}) => Container(
-    decoration: BoxDecoration(
-      color: SuonaColors.paper,
-      borderRadius: BorderRadius.circular(26),
-      boxShadow: const [BoxShadow(color: Color(0x55000000), blurRadius: 24, offset: Offset(0, 8))],
-    ),
-    padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
-    child: child,
-  );
+  Widget _paper({required Widget child}) => PaperCard(child: child);
 
   Widget _staffCard({required double maxWidth, required double aspect}) {
     return Center(
@@ -646,18 +638,13 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
       }
     } else if (_q.shown != null) {
       final color = switch (_phase) {
-        _Phase.asking => SuonaColors.spot,
+        _Phase.asking => SuonaColors.teal,
         _Phase.correct => SuonaColors.ok,
         _Phase.wrong => SuonaColors.wrong,
       };
       marks.add(FretMark(_q.shown!, color: color, label: _phase == _Phase.asking ? '?' : pitchName(_note, _naming)));
     }
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1160),
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(10, 12, 14, 6),
-          decoration: BoxDecoration(color: SuonaColors.stageFloor, borderRadius: BorderRadius.circular(22)),
+    return BoardCard(
           child: Fretboard(
             key: ValueKey('fb$_asked'),
             marks: marks,
@@ -669,8 +656,6 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
             highlightString: _q.onString ?? (answer ? _tunerString : null),
             onTap: answer && _phase == _Phase.asking ? _answerFret : null,
           ),
-        ),
-      ),
     );
   }
 
@@ -685,7 +670,10 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
     final s = names[_q.onString! - 1];
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Text(tr('Auf der $s-Saite!', 'On the $s string!'), style: display(24, color: SuonaColors.spot)),
+      child: GradientTint(
+        colors: SuonaColors.sky,
+        child: Text(tr('Auf der $s-Saite!', 'On the $s string!'), style: display(24, color: Colors.white)),
+      ),
     );
   }
 
@@ -694,13 +682,13 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
     if (_placedStep != null) {
       final placed = pitchFromStaffStep(_placedStep!, _modifier);
       final color = switch (_phase) {
-        _Phase.asking => SuonaColors.violet,
-        _Phase.correct => SuonaColors.okDeep,
-        _Phase.wrong => SuonaColors.wrong,
+        _Phase.asking => SuonaColors.paperHint,
+        _Phase.correct => SuonaColors.paperOk,
+        _Phase.wrong => SuonaColors.paperWrong,
       };
       notes.add(StaffNote(placed, color: color));
     }
-    if (_phase == _Phase.wrong) notes.add(StaffNote(_note, color: SuonaColors.okDeep));
+    if (_phase == _Phase.wrong) notes.add(StaffNote(_note, color: SuonaColors.paperOk));
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 820),
@@ -718,7 +706,7 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
                       alignment: Alignment.bottomRight,
                       child: Text(
                         tr('Tippe, wo die Note hingehört', 'Tap where the note belongs'),
-                        style: display(22, color: SuonaColors.inkMuted, weight: FontWeight.w700),
+                        style: display(20, color: SuonaColors.paperMuted, weight: FontWeight.w600),
                       ),
                     ),
                 ],
@@ -748,57 +736,22 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
               ),
             ),
         const SizedBox(width: 18),
-        FilledButton.icon(
+        GradientButton(
+          label: tr('Fertig', 'Done'),
+          icon: Icons.check_rounded,
+          height: 62,
+          fontSize: 22,
           onPressed: _phase == _Phase.asking && _placedStep != null ? _confirmStaff : null,
-          icon: const Icon(Icons.check_rounded, size: 30),
-          label: Text(tr('Fertig', 'Done')),
-          style: FilledButton.styleFrom(
-            backgroundColor: SuonaColors.spot,
-            foregroundColor: SuonaColors.ink,
-            disabledBackgroundColor: SuonaColors.stageFloor,
-            textStyle: display(26),
-            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
-          ),
         ),
       ],
     );
   }
 
   Widget _crowdAndPedals() {
-    final mood = _crowd;
-    final color = mood > 0.55 ? SuonaColors.ok : (mood > 0.25 ? SuonaColors.spot : SuonaColors.coral);
-    return Row(
-      children: [
-        Icon(
-          mood > 0.55
-              ? Icons.sentiment_very_satisfied_rounded
-              : (mood > 0.25 ? Icons.sentiment_neutral_rounded : Icons.sentiment_very_dissatisfied_rounded),
-          color: color,
-          size: 30,
-        ),
-        const SizedBox(width: 8),
-        Text(
-          tr('Publikum', 'Crowd'),
-          style: display(18, color: SuonaColors.onStage, weight: FontWeight.w700),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(end: mood),
-              duration: const Duration(milliseconds: 350),
-              builder: (context, v, _) => LinearProgressIndicator(
-                value: v,
-                minHeight: 14,
-                backgroundColor: SuonaColors.stageFloor,
-                color: color,
-              ),
-            ),
-          ),
-        ),
-        for (final id in widget.config.pedals) ...[
-          const SizedBox(width: 10),
+    return CrowdBar(
+      mood: _crowd,
+      pedals: [
+        for (final id in widget.config.pedals)
           PedalButton(
             id: id,
             used: _usedPedals.contains(id),
@@ -806,7 +759,6 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
             enabled: _phase == _Phase.asking && !_usedPedals.contains(id) && _pedalUseful(id),
             onTap: () => _usePedal(id),
           ),
-        ],
       ],
     );
   }
@@ -814,7 +766,7 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
   Widget _header() {
     return Row(
       children: [
-        StageIconButton(
+        RoundIconButton(
           icon: Icons.close_rounded,
           tooltip: tr('Beenden', 'Quit'),
           onPressed: () => Navigator.of(context).pop(),
@@ -822,16 +774,10 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
         const SizedBox(width: 14),
         Expanded(child: _arcade ? _livesRow() : _progressDots()),
         const SizedBox(width: 12),
-        if (_combo.multiplier > 1)
-          Container(
-            margin: const EdgeInsets.only(right: 12),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(color: SuonaColors.coral, borderRadius: BorderRadius.circular(20)),
-            child: Text('Combo ×${_combo.multiplier}', style: display(18, color: Colors.white)),
-          ),
+        if (_combo.multiplier > 1) ...[ComboBadge(_combo.multiplier), const SizedBox(width: 12)],
         _PlayToggle(on: _playMode, onTap: () => _setPlayMode(!_playMode)),
-        const SizedBox(width: 14),
-        CoinCount(_coins, size: 26),
+        const SizedBox(width: 12),
+        InfoPill(child: CoinCount(_coins, size: 21)),
       ],
     );
   }
@@ -865,7 +811,11 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
         return Container(
           constraints: const BoxConstraints(maxWidth: 820),
           padding: EdgeInsets.symmetric(horizontal: 18, vertical: compact ? 8 : 14),
-          decoration: BoxDecoration(color: SuonaColors.stageFloor, borderRadius: BorderRadius.circular(22)),
+          decoration: BoxDecoration(
+            color: SuonaColors.card,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: SuonaColors.line),
+          ),
           child: Row(
             children: [
               // Sichtbar: Das Mikrofon ist an.
@@ -874,10 +824,12 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
                 height: compact ? 46 : 64,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: _mic == null ? SuonaColors.stageLine : SuonaColors.red,
+                  color: _mic == null ? SuonaColors.cardHigh : null,
+                  // Rot heisst: Das Mikrofon hört zu.
+                  gradient: _mic == null ? null : gradientOf([SuonaColors.wrong, SuonaColors.pink]),
                   boxShadow: [
                     if (_mic != null)
-                      BoxShadow(color: SuonaColors.red.withValues(alpha: 0.6), blurRadius: 6 + 24 * level),
+                      BoxShadow(color: SuonaColors.wrong.withValues(alpha: 0.55), blurRadius: 6 + 24 * level),
                   ],
                 ),
                 child: Icon(Icons.mic_rounded, color: Colors.white, size: compact ? 28 : 38),
@@ -890,18 +842,10 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
                   children: [
                     Text(
                       _mic == null ? tr('Mikrofon startet …', 'Starting microphone …') : prompt,
-                      style: display(compact ? 20 : 24, color: SuonaColors.onStage),
+                      style: display(compact ? 19 : 22),
                     ),
-                    const SizedBox(height: 6),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: LinearProgressIndicator(
-                        value: level,
-                        minHeight: 10,
-                        backgroundColor: SuonaColors.stage,
-                        color: SuonaColors.teal,
-                      ),
-                    ),
+                    const SizedBox(height: 8),
+                    GradientBar(value: level, height: 10),
                   ],
                 ),
               ),
@@ -911,10 +855,13 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(tr('Ich höre', 'I hear'), style: const TextStyle(color: SuonaColors.onStageMuted, fontSize: 14)),
-                    Text(
-                      heard == null ? '–' : pitchNameWithOctave(_spell(heard), _naming),
-                      style: display(compact ? 28 : 36, color: SuonaColors.spot),
+                    Text(tr('Ich höre', 'I hear'), style: body(14, color: SuonaColors.muted)),
+                    GradientTint(
+                      colors: SuonaColors.sky,
+                      child: Text(
+                        heard == null ? '–' : pitchNameWithOctave(_spell(heard), _naming),
+                        style: display(compact ? 28 : 36, color: Colors.white),
+                      ),
                     ),
                   ],
                 ),
@@ -926,27 +873,7 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _progressDots() {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 6,
-      children: [
-        for (var i = 0; i < widget.config.length; i++)
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: 22,
-            height: 22,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: i < _results.length
-                  ? (_results[i] ? SuonaColors.ok : SuonaColors.wrong)
-                  : (i == _results.length ? SuonaColors.onStage : SuonaColors.stageFloor),
-              border: Border.all(color: SuonaColors.stageLine, width: 2),
-            ),
-          ),
-      ],
-    );
-  }
+  Widget _progressDots() => ProgressDots(total: widget.config.length, results: _results);
 
   Widget _livesRow() {
     return Row(
@@ -959,29 +886,13 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
         const SizedBox(width: 10),
         Text(
           tr('${_results.where((r) => r).length} richtig', '${_results.where((r) => r).length} right'),
-          style: display(20, color: SuonaColors.onStageMuted, weight: FontWeight.w700),
+          style: display(19, color: SuonaColors.muted, weight: FontWeight.w600),
         ),
       ],
     );
   }
 
-  Widget _timeBar() {
-    return AnimatedBuilder(
-      animation: _timer,
-      builder: (context, _) {
-        final left = 1 - _timer.value;
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: LinearProgressIndicator(
-            value: left,
-            minHeight: 12,
-            backgroundColor: SuonaColors.stageFloor,
-            color: left < 0.25 ? SuonaColors.coral : SuonaColors.spot,
-          ),
-        );
-      },
-    );
-  }
+  Widget _timeBar() => TimeBar(timer: _timer);
 
   Widget _feedback() {
     final ok = _phase == _Phase.correct;
@@ -993,17 +904,10 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
     final withOctave = pitchNameWithOctave(shownPitch, _naming);
     final timeout = !ok && _answeredLetter == null && _tapped == null && _placedStep == null && _heardMidi == null;
     if (_shielded) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-        decoration: BoxDecoration(color: SuonaColors.violet, borderRadius: BorderRadius.circular(18)),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.shield_rounded, color: Colors.white, size: 30),
-            const SizedBox(width: 8),
-            Text(tr('Schild! Das war $name', 'Shield! That was $name'), style: display(28, color: Colors.white)),
-          ],
-        ),
+      return FeedbackBadge(
+        kind: FeedbackKind.shield,
+        icon: Icons.shield_rounded,
+        text: tr('Schild! Das war $name', 'Shield! That was $name'),
       );
     }
     final heard = _heardMidi == null ? null : _spell(_heardMidi!);
@@ -1021,38 +925,12 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
       QuestionType.staffFromFret => tr('So steht das $name', 'This is how $name looks'),
       _ => tr('Das ist $name', 'That’s $name'),
     };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-      decoration: BoxDecoration(
-        color: ok ? SuonaColors.ok : SuonaColors.wrong,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: const [BoxShadow(color: Color(0x44000000), blurRadius: 10, offset: Offset(0, 4))],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            ok ? Icons.check_circle_rounded : (timeout ? Icons.timer_off_rounded : Icons.close_rounded),
-            color: Colors.white,
-            size: 30,
-          ),
-          const SizedBox(width: 8),
-          Text(text, style: display(30, color: Colors.white)),
-          if (withOctave != name) ...[
-            const SizedBox(width: 8),
-            Text(
-              '($withOctave)',
-              style: display(20, color: Colors.white70, weight: FontWeight.w700),
-            ),
-          ],
-          if (ok) ...[
-            const SizedBox(width: 12),
-            const CoinIcon(size: 22),
-            const SizedBox(width: 4),
-            Text('+$_lastGain', style: display(24, color: Colors.white)),
-          ],
-        ],
-      ),
+    return FeedbackBadge(
+      kind: ok ? FeedbackKind.right : FeedbackKind.wrong,
+      icon: ok ? Icons.check_rounded : (timeout ? Icons.timer_off_rounded : Icons.close_rounded),
+      text: text,
+      extra: withOctave != name ? '($withOctave)' : null,
+      gain: ok ? _lastGain : null,
     );
   }
 
@@ -1060,7 +938,7 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
     final enharmonic = _q.type == QuestionType.nameFromFret;
     return LayoutBuilder(
       builder: (context, c) {
-        final size = min(96.0, (c.maxWidth - 6 * 10) / 7);
+        final size = min(104.0, (c.maxWidth - 6 * 12) / 7);
         return Column(
           children: [
             Row(
@@ -1068,13 +946,14 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
               children: [
                 for (final l in Letter.values)
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 5),
-                    child: _AnswerButton(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: AnswerButton(
                       label: letterLabel(l, _naming),
-                      size: size,
+                      width: size,
+                      height: size,
                       state: _answeredLetter == l
-                          ? (_phase == _Phase.correct ? _ButtonState.right : _ButtonState.wrong)
-                          : (_phase == _Phase.wrong && l == _note.letter ? _ButtonState.hint : _ButtonState.normal),
+                          ? (_phase == _Phase.correct ? AnswerState.right : AnswerState.wrong)
+                          : (_phase == _Phase.wrong && l == _note.letter ? AnswerState.hint : AnswerState.normal),
                       hidden: _hiddenLetters.contains(l),
                       onTap: _phase == _Phase.asking && !_hiddenLetters.contains(l) ? () => _answerName(l) : null,
                     ),
@@ -1109,61 +988,12 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
                         'Pick ♯ or ♭ first, then the note. F♯ and G♭ both count.',
                       )
                     : tr('Vorzeichen zuerst wählen, dann den Ton', 'Pick ♯ or ♭ first, then the note'),
-                style: const TextStyle(color: SuonaColors.onStageMuted, fontSize: 14),
+                style: body(14, color: SuonaColors.muted),
               ),
             ],
           ],
         );
       },
-    );
-  }
-}
-
-enum _ButtonState { normal, right, wrong, hint }
-
-class _AnswerButton extends StatelessWidget {
-  const _AnswerButton({
-    required this.label,
-    required this.size,
-    required this.state,
-    required this.onTap,
-    this.hidden = false,
-  });
-  final String label;
-  final double size;
-  final _ButtonState state;
-  final VoidCallback? onTap;
-
-  /// Vom Stimmgerät weggestrichen.
-  final bool hidden;
-
-  @override
-  Widget build(BuildContext context) {
-    final (bg, fg) = switch (state) {
-      _ButtonState.normal => (SuonaColors.onStage, SuonaColors.ink),
-      _ButtonState.right => (SuonaColors.ok, Colors.white),
-      _ButtonState.wrong => (SuonaColors.wrong, Colors.white),
-      _ButtonState.hint => (SuonaColors.spot, SuonaColors.ink),
-    };
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Opacity(
-        opacity: hidden ? 0.18 : 1,
-        child: Material(
-          color: bg,
-          borderRadius: BorderRadius.circular(size * 0.24),
-          elevation: 3,
-          shadowColor: Colors.black54,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(size * 0.24),
-            onTap: onTap,
-            child: Center(
-              child: Text(label, style: display(size * 0.5, color: fg)),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -1176,32 +1006,12 @@ class _ModifierButton extends StatelessWidget {
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final glyph = accidental == Accidental.sharp ? Smufl.sharp : Smufl.flat;
-    return SizedBox(
-      width: height * 1.5,
-      height: height,
-      child: Material(
-        color: selected ? SuonaColors.spot : SuonaColors.stageFloor,
-        borderRadius: BorderRadius.circular(height * 0.3),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(height * 0.3),
-          onTap: onTap,
-          child: Center(
-            child: Text(
-              glyph,
-              style: TextStyle(
-                fontFamily: 'Bravura',
-                fontSize: height * 0.95,
-                height: 1.25,
-                color: selected ? SuonaColors.ink : SuonaColors.onStage,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AccidentalKey(
+    glyph: accidental == Accidental.sharp ? Smufl.sharp : Smufl.flat,
+    selected: selected,
+    height: height,
+    onTap: onTap,
+  );
 }
 
 /// Ein Plektrum als Leben im Arcade-Modus.
@@ -1227,14 +1037,22 @@ class _LifePickPainter extends CustomPainter {
       ..cubicTo(s.width * 0.2, 0, s.width * 0.8, 0, s.width * 0.92, s.height * 0.14)
       ..cubicTo(s.width, s.height * 0.3, s.width * 0.9, s.height * 0.62, s.width / 2, s.height)
       ..close();
-    canvas.drawPath(path, Paint()..color = filled ? SuonaColors.coral : SuonaColors.stageFloor);
-    canvas.drawPath(
-      path,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2
-        ..color = filled ? Colors.white54 : SuonaColors.stageLine,
-    );
+    final fill = Paint();
+    if (filled) {
+      fill.shader = gradientOf(SuonaColors.brand).createShader(Offset.zero & s);
+    } else {
+      fill.color = SuonaColors.cardHigh;
+    }
+    canvas.drawPath(path, fill);
+    if (!filled) {
+      canvas.drawPath(
+        path,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5
+          ..color = SuonaColors.line,
+      );
+    }
   }
 
   @override
@@ -1265,30 +1083,35 @@ class PedalButton extends StatelessWidget {
       'pedal_capo' => Icons.pause_circle_rounded,
       _ => Icons.tune_rounded,
     };
+    final lit = enabled || active;
+    final colors = active ? SuonaColors.brand : SuonaColors.sun;
     return Tooltip(
       message: item == null ? id : '${item.name}: ${item.help}',
-      child: Material(
-        color: active ? SuonaColors.violet : (enabled ? SuonaColors.spot : SuonaColors.stageFloor),
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: enabled ? onTap : null,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 26, color: enabled || active ? SuonaColors.ink : SuonaColors.onStageMuted),
-                const SizedBox(width: 6),
-                Text(
-                  item?.name ?? id,
-                  style: display(
-                    16,
-                    color: enabled || active ? SuonaColors.ink : SuonaColors.onStageMuted,
-                    weight: FontWeight.w700,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(999),
+          gradient: lit ? gradientOf(colors, horizontal: true) : null,
+          color: lit ? null : SuonaColors.card,
+          border: lit ? null : Border.all(color: SuonaColors.line),
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(999),
+            onTap: enabled ? onTap : null,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 24, color: lit ? Colors.white : SuonaColors.muted),
+                  const SizedBox(width: 6),
+                  Text(
+                    item?.name ?? id,
+                    style: display(15, color: lit ? Colors.white : SuonaColors.muted),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -1296,7 +1119,6 @@ class PedalButton extends StatelessWidget {
     );
   }
 }
-
 
 /// Schalter oben: mit der Gitarre antworten (Mikrofon) oder antippen.
 class _PlayToggle extends StatelessWidget {
@@ -1310,22 +1132,30 @@ class _PlayToggle extends StatelessWidget {
       message: on
           ? tr('Mit der Gitarre antworten: an', 'Answer with your guitar: on')
           : tr('Mit der Gitarre antworten', 'Answer with your guitar'),
-      child: Material(
-        color: on ? SuonaColors.red : SuonaColors.stageFloor,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(on ? Icons.mic_rounded : Icons.mic_none_rounded, color: Colors.white, size: 26),
-                const SizedBox(width: 6),
-                Text(tr('Gitarre', 'Guitar'), style: display(18, color: Colors.white, weight: FontWeight.w700)),
+      child: InfoPill(
+        color: on ? SuonaColors.cardHigh : null,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.only(left: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                on ? Icons.mic_rounded : Icons.mic_none_rounded,
+                color: on ? SuonaColors.wrong : SuonaColors.ink,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Text(tr('Gitarre', 'Guitar'), style: body(16, weight: FontWeight.w600)),
+              if (on) ...[
+                const SizedBox(width: 8),
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: SuonaColors.wrong),
+                ),
               ],
-            ),
+            ],
           ),
         ),
       ),
@@ -1343,18 +1173,18 @@ class _MicMessage extends StatelessWidget {
     return Container(
       constraints: const BoxConstraints(maxWidth: 820),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: SuonaColors.stageFloor, borderRadius: BorderRadius.circular(22)),
+      decoration: BoxDecoration(
+        color: SuonaColors.card,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: SuonaColors.line),
+      ),
       child: Row(
         children: [
-          const Icon(Icons.mic_off_rounded, color: SuonaColors.coral, size: 40),
+          Icon(Icons.mic_off_rounded, color: SuonaColors.rose, size: 40),
           const SizedBox(width: 14),
-          Expanded(child: Text(text, style: const TextStyle(color: SuonaColors.onStage, fontSize: 17))),
+          Expanded(child: Text(text, style: body(17))),
           const SizedBox(width: 12),
-          FilledButton(
-            onPressed: onTap,
-            style: FilledButton.styleFrom(backgroundColor: SuonaColors.spot, foregroundColor: SuonaColors.ink),
-            child: Text(tr('Antippen', 'Tap instead')),
-          ),
+          GradientButton(label: tr('Antippen', 'Tap instead'), height: 48, fontSize: 16, onPressed: onTap),
         ],
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 
@@ -19,6 +20,7 @@ class SuonaSettings {
     this.accidentals = AccidentalStyle.mixed,
     this.sound = true,
     this.lowStringOnTop = false,
+    this.themeMode = ThemeMode.dark,
   });
 
   /// Null = wie das System.
@@ -31,12 +33,16 @@ class SuonaSettings {
   /// Gitarre). Sonst wie in der Tabulatur: hohe e-Saite oben.
   bool lowStringOnTop;
 
+  /// Dunkel (Standard, wie Volti und Conti), hell oder wie das Gerät.
+  ThemeMode themeMode;
+
   Map<String, dynamic> toJson() => {
     'language': language?.name,
     'naming': naming.name,
     'accidentals': accidentals.name,
     'sound': sound,
     'lowStringOnTop': lowStringOnTop,
+    'themeMode': themeMode.name,
   };
 
   static SuonaSettings fromJson(Map<String, dynamic> j) => SuonaSettings(
@@ -45,6 +51,7 @@ class SuonaSettings {
     accidentals: AccidentalStyle.values.asNameMap()[j['accidentals']] ?? AccidentalStyle.mixed,
     sound: j['sound'] as bool? ?? true,
     lowStringOnTop: j['lowStringOnTop'] as bool? ?? false,
+    themeMode: ThemeMode.values.asNameMap()[j['themeMode']] ?? ThemeMode.dark,
   );
 }
 

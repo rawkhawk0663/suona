@@ -9,6 +9,7 @@ import '../../core/music/chords.dart';
 import '../../core/profiles/profile.dart';
 import '../../core/suona_state.dart';
 import '../../widgets/chord_board.dart';
+import '../../widgets/visuals.dart';
 import '../adventure/tour.dart';
 import 'chord_quiz_screen.dart';
 
@@ -79,20 +80,15 @@ Widget? chordNextLevelButton(BuildContext context, SuonaState state, Profile p, 
     level = 0;
   }
   if (station >= ChordTour.stationCount || !ChordTour.levelOpen(p, c, station, level)) return null;
-  return FilledButton.icon(
+  return GradientButton(
     onPressed: () => startChordLevel(context, state, p, station, level, replace: true),
-    icon: const Icon(Icons.arrow_forward_rounded, size: 28),
-    label: Text(
-      level == 0
-          ? tr('Weiter: ${ChordTour.stationName(station)}', 'Next: ${ChordTour.stationName(station)}')
-          : tr('Weiter', 'Next'),
-    ),
-    style: FilledButton.styleFrom(
-      backgroundColor: SuonaColors.ok,
-      foregroundColor: Colors.white,
-      textStyle: display(24),
-      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-    ),
+    icon: Icons.arrow_forward_rounded,
+    colors: SuonaColors.mint,
+    height: 60,
+    fontSize: 21,
+    label: level == 0
+        ? tr('Weiter: ${ChordTour.stationName(station)}', 'Next: ${ChordTour.stationName(station)}')
+        : tr('Weiter', 'Next'),
   );
 }
 
@@ -178,7 +174,7 @@ class ChordTourSpec extends TourSpec {
           plan.strings == 3
               ? tr('Neue Akkorde hier · 3 Saiten', 'New chords here · 3 strings')
               : tr('Neue Akkorde hier · ${plan.strings} Saiten', 'New chords here · ${plan.strings} strings'),
-          style: display(20, color: SuonaColors.onStage, weight: FontWeight.w700),
+          style: display(19),
         ),
         const SizedBox(height: 6),
         SizedBox(
@@ -210,7 +206,7 @@ class ChordPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = SuonaScope.of(context);
-    final dots = [for (final d in chord.dots(strings)) ChordDot(d, color: SuonaColors.spot, label: '${chord.fingerOn(d.string)}')];
+    final dots = [for (final d in chord.dots(strings)) ChordDot(d, color: SuonaColors.accent, label: '${chord.fingerOn(d.string)}')];
     final marks = <int, OpenMark>{
       for (var st = 1; st <= strings; st++)
         if (!chord.dots(strings).any((d) => d.string == st))
@@ -218,11 +214,15 @@ class ChordPreview extends StatelessWidget {
     };
     return Container(
       width: width,
-      padding: const EdgeInsets.fromLTRB(6, 6, 8, 4),
-      decoration: BoxDecoration(color: SuonaColors.stageFloor, borderRadius: BorderRadius.circular(16)),
+      padding: const EdgeInsets.fromLTRB(6, 8, 8, 4),
+      decoration: BoxDecoration(
+        color: SuonaColors.card,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: SuonaColors.line),
+      ),
       child: Column(
         children: [
-          Text(chordName(chord, state.naming), style: display(22, color: SuonaColors.spot)),
+          Text(chordName(chord, state.naming), style: display(21)),
           Expanded(
             child: ChordBoard(
               strings: strings,

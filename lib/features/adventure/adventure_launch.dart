@@ -6,6 +6,7 @@ import '../../core/game/adventure.dart';
 import '../../core/game/shop.dart';
 import '../../core/profiles/profile.dart';
 import '../../core/suona_state.dart';
+import '../../widgets/visuals.dart';
 import '../quiz/quiz_screen.dart';
 
 /// Einstellungen für ein Level im Abenteuer.
@@ -50,20 +51,15 @@ Widget? nextLevelButton(BuildContext context, SuonaState state, Profile p, Adven
     level = 0;
   }
   if (station >= Adventure.stationCount || !Adventure.levelOpen(p, c, station, level)) return null;
-  return FilledButton.icon(
+  return GradientButton(
     onPressed: () => startNoteLevel(context, state, p, station, level, replace: true),
-    icon: const Icon(Icons.arrow_forward_rounded, size: 28),
-    label: Text(
-      level == 0
-          ? tr('Weiter: ${Adventure.stationName(station)}', 'Next: ${Adventure.stationName(station)}')
-          : tr('Weiter', 'Next'),
-    ),
-    style: FilledButton.styleFrom(
-      backgroundColor: SuonaColors.ok,
-      foregroundColor: Colors.white,
-      textStyle: display(24),
-      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-    ),
+    icon: Icons.arrow_forward_rounded,
+    colors: SuonaColors.mint,
+    height: 60,
+    fontSize: 21,
+    label: level == 0
+        ? tr('Weiter: ${Adventure.stationName(station)}', 'Next: ${Adventure.stationName(station)}')
+        : tr('Weiter', 'Next'),
   );
 }
 

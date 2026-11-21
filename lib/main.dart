@@ -57,8 +57,8 @@ void _registerFontLicenses() {
   LicenseRegistry.addLicense(() async* {
     for (final (name, file) in const [
       ('Bravura', 'OFL-Bravura.txt'),
-      ('Baloo 2', 'OFL-Baloo2.txt'),
-      ('Atkinson Hyperlegible', 'OFL-AtkinsonHyperlegible.txt'),
+      ('Sora', 'OFL-Sora.txt'),
+      ('IBM Plex Sans', 'OFL-IBMPlexSans.txt'),
     ]) {
       yield LicenseEntryWithLineBreaks([name], await rootBundle.loadString('assets/fonts/$file'));
     }
@@ -75,16 +75,45 @@ class SuonaApp extends StatelessWidget {
       state: state,
       child: ValueListenableBuilder(
         valueListenable: L10n.language,
-        builder: (context, language, _) => MaterialApp(
-          title: 'Suona',
-          debugShowCheckedModeBanner: false,
-          theme: buildSuonaTheme(),
-          locale: language.locale,
-          supportedLocales: const [Locale('de', 'CH'), Locale('en')],
-          localizationsDelegates: GlobalMaterialLocalizations.delegates,
-          home: const StartScreen(),
+        builder: (context, language, _) => ListenableBuilder(
+          listenable: state,
+          builder: (context, _) => MaterialApp(
+            title: 'Suona',
+            debugShowCheckedModeBanner: false,
+            theme: buildSuonaTheme(Palette.light),
+            darkTheme: buildSuonaTheme(Palette.dark),
+            themeMode: state.settings.themeMode,
+            locale: language.locale,
+            supportedLocales: const [Locale('de', 'CH'), Locale('en')],
+            localizationsDelegates: GlobalMaterialLocalizations.delegates,
+            builder: (context, child) => _PaletteSwitch(child: child!),
+            home: const StartScreen(),
+          ),
         ),
       ),
     );
+  }
+}
+
+/// Setzt die Farben (`SuonaColors`) passend zu hell/dunkel. Ändert sich der
+/// Modus, wird alles neu aufgebaut, auch Teile, die nicht vom Theme abhängen.
+class _PaletteSwitch extends StatelessWidget {
+  const _PaletteSwitch({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    if (SuonaColors.use(dark ? Palette.dark : Palette.light)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        void rebuild(Element e) {
+          e.markNeedsBuild();
+          e.visitChildren(rebuild);
+        }
+
+        (context as Element).visitChildren(rebuild);
+      });
+    }
+    return child;
   }
 }

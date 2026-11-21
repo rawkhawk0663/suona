@@ -4,7 +4,7 @@ import '../../app/l10n.dart';
 import '../../app/theme.dart';
 import '../../core/profiles/profile.dart';
 import '../../core/suona_state.dart';
-import '../../widgets/stage.dart';
+import '../../widgets/visuals.dart';
 import '../home/home_screen.dart';
 import '../teacher/teacher_gate.dart';
 import 'new_profile_screen.dart';
@@ -17,14 +17,14 @@ class StartScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = SuonaScope.of(context);
     return Scaffold(
-      body: StageBackground(
+      body: AppBackground(
         child: SafeArea(
           child: Stack(
             children: [
               Positioned(
                 top: 12,
                 right: 12,
-                child: StageIconButton(
+                child: RoundIconButton(
                   icon: Icons.lock_rounded,
                   tooltip: tr('Lehrerbereich', 'Teacher area'),
                   onPressed: () => openTeacherArea(context),
@@ -35,13 +35,12 @@ class StartScreen extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(24, 70, 24, 90),
                   child: Column(
                     children: [
-                      Text('Suona', style: display(72, color: SuonaColors.spot)),
+                      const SuonaLogo(size: 96, glow: true),
+                      const SizedBox(height: 18),
+                      Text('Suona', style: display(60)),
                       const SizedBox(height: 4),
-                      Text(
-                        tr('Wer spielt?', 'Who’s playing?'),
-                        style: display(30, color: SuonaColors.onStage, weight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 28),
+                      Text(tr('Wer spielt?', 'Who’s playing?'), style: body(22, color: SuonaColors.muted)),
+                      const SizedBox(height: 32),
                       Wrap(
                         spacing: 18,
                         runSpacing: 18,
@@ -86,29 +85,20 @@ class _ProfileCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 168,
-      child: Material(
-        color: SuonaColors.stageFloor,
-        borderRadius: BorderRadius.circular(24),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(24),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 18, 12, 14),
-            child: Column(
-              children: [
-                FaceBadge(profile.look, size: 104),
-                const SizedBox(height: 10),
-                Text(
-                  profile.nickname,
-                  style: display(24, color: SuonaColors.onStage),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                CoinCount(profile.coins, size: 18),
-              ],
-            ),
-          ),
+      width: 176,
+      child: SuonaCard(
+        onTap: onTap,
+        radius: 24,
+        gradient: characterGlow(strength: 0.8),
+        padding: const EdgeInsets.fromLTRB(12, 20, 12, 16),
+        child: Column(
+          children: [
+            FaceBadge(profile.look, size: 104),
+            const SizedBox(height: 12),
+            Text(profile.nickname, style: display(22), overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 6),
+            CoinCount(profile.coins, size: 18),
+          ],
         ),
       ),
     );
@@ -122,28 +112,19 @@ class _NewProfileCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 168,
-      height: 196,
-      child: Material(
+      width: 176,
+      height: 212,
+      child: SuonaCard(
+        onTap: onTap,
+        radius: 24,
         color: Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-          side: BorderSide(color: SuonaColors.onStageMuted.withValues(alpha: 0.6), width: 2),
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(24),
-          onTap: onTap,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.add_circle_rounded, size: 64, color: SuonaColors.spot),
-              const SizedBox(height: 8),
-              Text(
-                tr('Neues Profil', 'New profile'),
-                style: display(21, color: SuonaColors.onStage, weight: FontWeight.w700),
-              ),
-            ],
-          ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            GradientIcon(Icons.add_rounded, colors: SuonaColors.brand, size: 64, circle: true),
+            const SizedBox(height: 14),
+            Text(tr('Neues Profil', 'New profile'), style: display(19)),
+          ],
         ),
       ),
     );

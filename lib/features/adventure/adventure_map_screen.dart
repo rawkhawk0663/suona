@@ -7,7 +7,7 @@ import '../../app/theme.dart';
 import '../../core/game/adventure.dart';
 import '../../core/profiles/profile.dart';
 import '../../core/suona_state.dart';
-import '../../widgets/stage.dart';
+import '../../widgets/visuals.dart';
 import 'station_screen.dart';
 import 'tour.dart';
 
@@ -23,7 +23,7 @@ class AdventureMapScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = SuonaScope.of(context);
     final p = state.profiles.where((x) => x.id == profileId).firstOrNull;
-    if (p == null) return const Scaffold(backgroundColor: SuonaColors.stage);
+    if (p == null) return const Scaffold();
     final progress = tour.progress(state, p);
     // Aktuelle Station: die letzte offene.
     var current = 0;
@@ -32,41 +32,30 @@ class AdventureMapScreen extends StatelessWidget {
     }
     final totalStars = progress.fold<int>(0, (a, row) => a + row.fold<int>(0, (b, x) => b + x));
     return Scaffold(
-      body: StageBackground(
-        floor: false,
+      body: AppBackground(
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            padding: const EdgeInsets.fromLTRB(28, 20, 28, 24),
             child: Column(
               children: [
-                Row(
-                  children: [
-                    StageIconButton(
-                      icon: Icons.arrow_back_rounded,
-                      tooltip: tr('Zurück', 'Back'),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                ScreenHeader(
+                  title: tour.title,
+                  subtitle: tour.subtitle(state, p),
+                  trailing: [
+                    InfoPill(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(tour.title, style: display(40, color: SuonaColors.spot)),
+                          GradientIcon(Icons.star_rounded, colors: SuonaColors.sun, size: 34, circle: true),
+                          const SizedBox(width: 8),
                           Text(
-                            tour.subtitle(state, p),
-                            style: const TextStyle(color: SuonaColors.onStageMuted, fontSize: 15),
+                            '$totalStars/${Adventure.stationCount * Adventure.levelsPerStation * 3}',
+                            style: body(17, weight: FontWeight.w600),
                           ),
                         ],
                       ),
                     ),
-                    const Icon(Icons.star_rounded, color: SuonaColors.spot, size: 30),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$totalStars/${Adventure.stationCount * Adventure.levelsPerStation * 3}',
-                      style: display(24, color: SuonaColors.onStage),
-                    ),
-                    const SizedBox(width: 18),
-                    CoinCount(p.coins, size: 26),
+                    InfoPill(child: CoinCount(p.coins, size: 21)),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -91,7 +80,7 @@ class AdventureMapScreen extends StatelessWidget {
                                         'First play the concert at “${tour.stationName(s - 1)}”.',
                                       )
                                     : tour.teacherLockText,
-                                style: const TextStyle(fontSize: 17),
+                                style: body(17),
                               ),
                             ),
                           );
@@ -192,9 +181,9 @@ class _PathPainter extends CustomPainter {
       final done = i < current;
       final paint = Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 8
+        ..strokeWidth = 7
         ..strokeCap = StrokeCap.round
-        ..color = done ? SuonaColors.spot : SuonaColors.stageLine;
+        ..color = done ? SuonaColors.accent : SuonaColors.line;
       // Gestrichelt: Punkte entlang des Weges
       for (final metric in path.computeMetrics()) {
         for (var d = 0.0; d < metric.length; d += 22) {
@@ -234,7 +223,7 @@ class _StationNode extends StatelessWidget {
   Widget build(BuildContext context) {
     final done = stars[Adventure.concertLevel] > 0;
     final cleared = stars.where((x) => x > 0).length;
-    final bg = locked != null ? SuonaColors.stageFloor : (done ? SuonaColors.ok : SuonaColors.violet);
+    final colors = done ? SuonaColors.mint : SuonaColors.brand;
     return GestureDetector(
       onTap: onTap,
       child: Column(
@@ -244,41 +233,34 @@ class _StationNode extends StatelessWidget {
             clipBehavior: Clip.none,
             alignment: Alignment.center,
             children: [
-              if (isCurrent && locked == null)
-                Container(
-                  width: size + 18,
-                  height: size + 18,
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: SuonaColors.spot.withValues(alpha: 0.3)),
-                ),
               Container(
                 width: size,
                 height: size,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: bg,
-                  border: Border.all(color: isCurrent ? SuonaColors.spot : SuonaColors.stageLine, width: 4),
-                  boxShadow: const [BoxShadow(color: Color(0x55000000), blurRadius: 12, offset: Offset(0, 5))],
+                  gradient: locked != null ? null : gradientOf(colors),
+                  color: locked != null ? SuonaColors.card : null,
+                  border: locked != null
+                      ? Border.all(color: SuonaColors.line, width: 1.5)
+                      : (isCurrent ? Border.all(color: Colors.white, width: 4) : null),
+                  boxShadow: locked != null ? null : glowOf(colors, strength: isCurrent ? 0.6 : 0.3, blur: isCurrent ? 36 : 20),
                 ),
                 child: Icon(
                   locked != null ? Icons.lock_rounded : tour.stationIcon(station),
-                  size: size * 0.48,
-                  color: locked != null ? SuonaColors.onStageMuted : Colors.white,
+                  size: size * 0.46,
+                  color: locked != null ? SuonaColors.muted : Colors.white,
                 ),
               ),
               if (isCurrent && locked == null)
                 Positioned(
                   top: -size * 0.42,
-                  child: FaceBadge(profile.look, size: size * 0.55),
+                  child: FaceBadge(profile.look, size: size * 0.55, ring: SuonaColors.card),
                 ),
               if (done)
                 Positioned(
                   right: -4,
                   bottom: -4,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(color: SuonaColors.spot, shape: BoxShape.circle),
-                    child: const Icon(Icons.emoji_events_rounded, size: 22, color: SuonaColors.ink),
-                  ),
+                  child: GradientIcon(Icons.emoji_events_rounded, colors: SuonaColors.sun, size: 34, circle: true),
                 ),
             ],
           ),
@@ -286,12 +268,12 @@ class _StationNode extends StatelessWidget {
           Text(
             tour.stationName(station),
             textAlign: TextAlign.center,
-            style: display(17, color: locked != null ? SuonaColors.onStageMuted : SuonaColors.onStage),
+            style: display(16, color: locked != null ? SuonaColors.muted : SuonaColors.ink),
           ),
           if (locked == null)
             Text(
               '$cleared/${Adventure.levelsPerStation}',
-              style: const TextStyle(color: SuonaColors.onStageMuted, fontSize: 14),
+              style: body(14, color: SuonaColors.muted),
             ),
         ],
       ),

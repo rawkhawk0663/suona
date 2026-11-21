@@ -141,7 +141,7 @@ class _ChordCurriculumEditorState extends State<ChordCurriculumEditor> {
             if (_readOnly)
               Text(
                 '${widget.curriculum.description}\n${tr('Eingebaute Lehrpläne lassen sich nicht ändern. Mit „Als eigenen kopieren“ entsteht eine Kopie, die du anpassen kannst.', 'Built-in curricula can’t be changed. “Copy to edit” makes a copy you can adjust.')}',
-                style: const TextStyle(color: SuonaColors.inkMuted, fontSize: 16),
+                style: TextStyle(color: SuonaColors.muted, fontSize: 16),
               )
             else
               TextField(
@@ -159,7 +159,7 @@ class _ChordCurriculumEditorState extends State<ChordCurriculumEditor> {
                 'Pro Schritt wählst du die neuen Akkorde und wie viele Saiten das Griffbild zeigt (3 = g, h, e). Ein Akkord darf später mit mehr Saiten nochmals vorkommen. Die Schritte werden auf die 8 Etappen der Akkord-Tour verteilt.',
                 'For each step, pick the new chords and how many strings the chord chart shows (3 = G, B, E). A chord may come back later with more strings. Steps are spread over the 8 stops of the chord tour.',
               ),
-              style: const TextStyle(color: SuonaColors.inkMuted),
+              style: TextStyle(color: SuonaColors.muted),
             ),
             const SizedBox(height: 16),
             for (var i = 0; i < _steps.length; i++) _stepCard(i, naming),
@@ -194,7 +194,7 @@ class _ChordCurriculumEditorState extends State<ChordCurriculumEditor> {
               children: [
                 CircleAvatar(
                   radius: 16,
-                  backgroundColor: SuonaColors.spotDeep,
+                  backgroundColor: SuonaColors.rose,
                   child: Text('${i + 1}', style: display(16, color: Colors.white)),
                 ),
                 const SizedBox(width: 12),

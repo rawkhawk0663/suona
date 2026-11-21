@@ -15,7 +15,7 @@ import '../../core/music/curriculum.dart';
 import '../../core/music/note_names.dart';
 import '../../core/profiles/profile.dart';
 import '../../core/suona_state.dart';
-import '../../widgets/stage.dart';
+import '../../widgets/visuals.dart';
 import 'chord_curriculum_editor.dart';
 import 'curriculum_editor.dart';
 import 'mic_test.dart';
@@ -37,7 +37,8 @@ class TeacherScreen extends StatelessWidget {
           bottom: TabBar(
             isScrollable: true,
             tabAlignment: TabAlignment.start,
-            labelStyle: display(18, weight: FontWeight.w700),
+            labelStyle: display(17),
+            unselectedLabelStyle: display(17, weight: FontWeight.w600),
             tabs: [
               Tab(icon: const Icon(Icons.people_alt_rounded), text: tr('Profile', 'Profiles')),
               Tab(icon: const Icon(Icons.route_rounded), text: tr('Lehrpläne', 'Curricula')),
@@ -111,7 +112,7 @@ class _ProfileCard extends StatelessWidget {
                           '${profile.coins} Münzen · ${profile.roundsPlayed} Runden · ${profile.totalCorrect} Töne richtig · Streak ${profile.streak.currentDays(DateTime.now())} (Rekord ${profile.streak.best})',
                           '${profile.coins} coins · ${profile.roundsPlayed} rounds · ${profile.totalCorrect} notes right · streak ${profile.streak.currentDays(DateTime.now())} (best ${profile.streak.best})',
                         ),
-                        style: const TextStyle(color: SuonaColors.inkMuted),
+                        style: TextStyle(color: SuonaColors.muted),
                       ),
                     ],
                   ),
@@ -175,7 +176,7 @@ class _ProfileCard extends StatelessWidget {
                 'Stufe im Abenteuer: ${profile.difficulty.help} Gespeichert wird nur die Stufe, nicht das Alter.',
                 'Adventure level: ${profile.difficulty.help} Only the level is stored, not the age.',
               ),
-              style: const TextStyle(color: SuonaColors.inkMuted),
+              style: TextStyle(color: SuonaColors.muted),
             ),
             const SizedBox(height: 14),
             _AdventureLine(profile: profile, curriculum: curriculum),
@@ -288,8 +289,8 @@ class _Mastery extends StatelessWidget {
     Color colorOf(int box, int seen) {
       if (seen == 0) return SuonaColors.line;
       if (box >= 4) return SuonaColors.ok;
-      if (box >= 2) return SuonaColors.spot;
-      return SuonaColors.coral;
+      if (box >= 2) return SuonaColors.gold;
+      return SuonaColors.wrong;
     }
 
     return Column(
@@ -322,7 +323,7 @@ class _Mastery extends StatelessWidget {
               'Grün: sitzt · Gelb: wird sicherer · Rot: noch unsicher · Grau: noch nie gezeigt',
               'Green: secure · Yellow: getting there · Red: still unsure · Grey: not shown yet',
             ),
-            style: const TextStyle(color: SuonaColors.inkMuted, fontSize: 13),
+            style: TextStyle(color: SuonaColors.muted, fontSize: 13),
           ),
       ],
     );
@@ -431,7 +432,7 @@ class _CurriculaTab extends StatelessWidget {
             'In welcher Reihenfolge die Akkorde kommen und auf wie vielen Saiten. Jedes Profil bekommt seinen eigenen (unter „Profile“).',
             'The order in which chords come and on how many strings. Each profile gets its own (under “Profiles”).',
           ),
-          style: const TextStyle(color: SuonaColors.inkMuted),
+          style: TextStyle(color: SuonaColors.muted),
         ),
         const SizedBox(height: 8),
         for (final c in state.chordCurricula)
@@ -494,7 +495,7 @@ class _CurriculaTab extends StatelessWidget {
             'Eigene Vorlagen speicherst du in den Arcade-Einstellungen eines Profils („Als Vorlage speichern“). Sie stehen dann allen Profilen auf diesem Gerät zur Verfügung.',
             'Save your own presets in a profile’s arcade settings (“Save as preset”). They are then available to all profiles on this device.',
           ),
-          style: const TextStyle(color: SuonaColors.inkMuted),
+          style: TextStyle(color: SuonaColors.muted),
         ),
         const SizedBox(height: 8),
         if (state.customArcadePresets.isEmpty) Text(tr('Noch keine eigenen Vorlagen.', 'No presets of your own yet.')),
@@ -547,7 +548,7 @@ class _SettingsTab extends StatelessWidget {
         children: [
           Text(title, style: theme.textTheme.titleLarge),
           const SizedBox(height: 2),
-          Text(help, style: const TextStyle(color: SuonaColors.inkMuted)),
+          Text(help, style: TextStyle(color: SuonaColors.muted)),
           const SizedBox(height: 10),
           child,
         ],
@@ -615,6 +616,26 @@ class _SettingsTab extends StatelessWidget {
           Switch(value: s.sound, onChanged: (v) => state.updateSettings((x) => x.sound = v)),
         ),
         section(
+          tr('Darstellung', 'Appearance'),
+          tr(
+            'Dunkel ist Standard. Hell passt in sehr helle Räume.',
+            'Dark is the default. Light suits very bright rooms.',
+          ),
+          SegmentedButton<ThemeMode>(
+            segments: [
+              ButtonSegment(value: ThemeMode.dark, icon: const Icon(Icons.dark_mode_rounded), label: Text(tr('Dunkel', 'Dark'))),
+              ButtonSegment(value: ThemeMode.light, icon: const Icon(Icons.light_mode_rounded), label: Text(tr('Hell', 'Light'))),
+              ButtonSegment(
+                value: ThemeMode.system,
+                icon: const Icon(Icons.brightness_auto_rounded),
+                label: Text(tr('Wie das Gerät', 'Like the device')),
+              ),
+            ],
+            selected: {s.themeMode},
+            onSelectionChanged: (v) => state.updateSettings((x) => x.themeMode = v.first),
+          ),
+        ),
+        section(
           'Sprache · Language',
           tr('Sprache der App.', 'Language of the app.'),
           SegmentedButton<AppLanguage?>(
@@ -642,7 +663,13 @@ class _AboutTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        Text('Suona', style: display(44, color: SuonaColors.red)),
+        Row(
+          children: [
+            const SuonaLogo(size: 64),
+            const SizedBox(width: 16),
+            Text('Suona', style: display(44)),
+          ],
+        ),
         Text('${tr('Version', 'Version')} $suonaVersion', style: theme.textTheme.titleMedium),
         const SizedBox(height: 18),
         Text(tr('Updates', 'Updates'), style: theme.textTheme.titleLarge),
@@ -652,7 +679,7 @@ class _AboutTab extends StatelessWidget {
             'Suona sucht nie von selbst im Internet. Nur dieser Knopf fragt bei GitHub nach einer neuen Version. Dabei wird nichts über die Kinder gesendet.',
             'Suona never goes online by itself. Only this button asks GitHub for a new version. Nothing about the children is sent.',
           ),
-          style: const TextStyle(color: SuonaColors.inkMuted),
+          style: TextStyle(color: SuonaColors.muted),
         ),
         const SizedBox(height: 10),
         const UpdateSection(),
@@ -766,8 +793,8 @@ class _ChordSection extends StatelessWidget {
     Color colorOf(NoteStat s) {
       if (s.seen == 0) return SuonaColors.line;
       if (s.box >= 4) return SuonaColors.ok;
-      if (s.box >= 2) return SuonaColors.spot;
-      return SuonaColors.coral;
+      if (s.box >= 2) return SuonaColors.gold;
+      return SuonaColors.wrong;
     }
 
     Widget row(String title, String prefix) => Row(
@@ -843,7 +870,7 @@ class _ChordSection extends StatelessWidget {
         if (c.steps.isNotEmpty)
           Row(
             children: [
-              const Icon(Icons.airport_shuttle_rounded, color: SuonaColors.inkMuted),
+              Icon(Icons.airport_shuttle_rounded, color: SuonaColors.muted),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -859,7 +886,7 @@ class _ChordSection extends StatelessWidget {
                           'Chord tour: $done of 8 stops, now at “${ChordTour.stationName(next)}”.',
                         ),
                   style: TextStyle(
-                    color: waits ? SuonaColors.red : SuonaColors.inkMuted,
+                    color: waits ? SuonaColors.accent : SuonaColors.muted,
                     fontWeight: waits ? FontWeight.w700 : null,
                   ),
                 ),
@@ -892,7 +919,7 @@ class _AdventureLine extends StatelessWidget {
     final (from, _) = next == null ? (0, 0) : Adventure.stepsOf(next, c.steps.length);
     return Row(
       children: [
-        const Icon(Icons.map_rounded, color: SuonaColors.inkMuted),
+        Icon(Icons.map_rounded, color: SuonaColors.muted),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
@@ -908,7 +935,7 @@ class _AdventureLine extends StatelessWidget {
                     'Adventure: $done of 8 stations, now at “${Adventure.stationName(next)}”.',
                   ),
             style: TextStyle(
-              color: waits ? SuonaColors.red : SuonaColors.inkMuted,
+              color: waits ? SuonaColors.accent : SuonaColors.muted,
               fontWeight: waits ? FontWeight.w700 : null,
             ),
           ),

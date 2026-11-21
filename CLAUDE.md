@@ -90,7 +90,7 @@ Geschrieben wird immer über eine Zwischendatei (`json_files.dart`).
 ## Aufbau
 ```
 lib/
-  app/         l10n, Theme (Bühnen-Farben, Schriften Baloo 2 + Atkinson Hyperlegible), Updater, Fehlerprotokoll, Version
+  app/         l10n, Theme (Paletten dunkel/hell, Verläufe, Schriften Sora + IBM Plex Sans), Updater, Fehlerprotokoll, Version
   core/
     music/     Pitch, Notennamen, Gitarre, Lehrpläne
     game/      Lernkartei, Münzen/Combo/Sterne, Tages-Streak, Fragen, Arcade, Abenteuer, Shop, Abzeichen
@@ -101,11 +101,21 @@ lib/
   features/    start (Wer spielt?), home (mit Abzeichen), quiz (Üben, Arcade, Abenteuer-Level, Ergebnis), arcade (Einstellungen),
                adventure (Weltkarte, Station, Tour), chords (Akkord-Seite, Akkord-Quiz, Akkord-Tour), shop (Shop und Aussehen),
                teacher (Lehrerbereich)
-  widgets/     Bühne, Figuren, Münzen, Notensystem, Griffbrett, Griffbild für Akkorde
+  widgets/     visuals (Karten, Verlaufs-Knöpfe, Kacheln, Figuren, Münzen), game_parts (Antwortknöpfe, Rückmeldung, Zeit, Publikum, Notenblatt), Notensystem, Griffbrett, Griffbild für Akkorde
 assets/characters/  Luna und Fuzz als SVG (ganz und nur Gesicht), erzeugt mit tool/make_characters.py.
 tool/make_characters.py  zeichnet die Figuren (siehe „Figuren“)
-tool/make_icon.py   erzeugt das App-Symbol (Windows .ico, Android)
+tool/make_icon.py   erzeugt das App-Symbol wie Volti/Conti (Verlauf + weisse Marke: Plektrum mit Achtelnoten; Windows .ico, Android, assets/brand)
 ```
+
+## Darstellung (Wunsch des Besitzers: wie Volti und Conti)
+- **Farben** in `lib/app/theme.dart`: `Palette.dark` (Standard) und `Palette.light`, gleiche Werte wie Volti (Karten `#18191D` auf `#0D0E11`, hell Weiss auf `#F1F2F6`). `SuonaColors` liefert die gerade gültigen Farben (statische Getter). `SuonaApp` setzt die Palette nach hell/dunkel (`_PaletteSwitch`) und baut bei einem Wechsel alles neu auf. Darum kein `const` um Widgets mit `SuonaColors`.
+- **Vier Verläufe mit fester Bedeutung:** `brand` Pink → Violett (Bühne: Logo, Hauptknöpfe, Abenteuer, Auswahl), `mint` Mint → Blau (richtig, geschafft, Übungstage), `sun` Gelb → Pink (Münzen, Streak, Combo, Sterne, Shop), `sky` Türkis → Blau (Zeit, Griffbrett, Hinweise). Schrift auf Verläufen immer weiss.
+- **Hell/dunkel** stellt die Lehrperson im Lehrerbereich ein (Einstellungen → Darstellung, `SuonaSettings.themeMode`, Standard dunkel).
+- **Schriften:** Sora (Überschriften, Antwortknöpfe, Zahlen, nur 600/700) und IBM Plex Sans (`Plex`, Text), feste Schnitte aus Volti, OFL-Texte unter Lizenzen. `display()` und `body()` in `theme.dart`.
+- **Bausteine:** `widgets/visuals.dart` (`SuonaCard`, `MenuTile`, `GradientButton`, `GradientIcon`, `RoundIconButton`, `InfoPill`, `ChoiceCard`, `ScreenHeader`, `GradientBar`, `SuonaLogo`, `characterGlow` = weiches Leuchten hinter der Figur) und `widgets/game_parts.dart` (`AnswerButton`: richtig im Mint-Verlauf, falsch rot, Lösung mit Mint-Rand; `FeedbackBadge`, `ProgressDots`, `TimeBar`, `CrowdBar`, `ComboBadge`, `PaperCard`, `BoardCard`). Karten 20–24 Punkte rund mit feinem Rand, keine Schatten ausser dem Leuchten farbiger Knöpfe.
+- Das **Notenblatt** bleibt in beiden Modi weiss (`SuonaColors.paper`, Noten `paperInk`, richtig `paperOk`, falsch `paperWrong`). Griffbrett und Griffbild bleiben Holz.
+- **Startseite** wie im Mockup: links die Figur mit Leuchten, rechts „Weiter im Abenteuer“ (`nextStop` in `tour.dart`), sechs Kacheln, „Heute“ mit den Übungstagen der Woche.
+- **App-Symbol** wie Volti und Conti: Quadrat mit runden Ecken im Verlauf, weisse Marke (`tool/make_icon.py`). Bei Änderungen auch `bilder/suona_icon.png` im Download-Projekt ersetzen.
 
 ## Figuren
 - Stil „Mix 2“ (vom Besitzer gewählt, aus einem Vergleich von vier Stilen): grosse, glänzende Chibi-Augen und Bäckchen, dazu dicke dunkle Konturen (`#15121F`), harte Schatten als Sichel und Rock-Details. Luna: lange Haare, Stern im Haar (verschwindet unter Kopfbedeckungen) und auf dem Shirt, korallroter Rock, Ringelstrumpfhose, Stiefel, türkise Pfeil-Gitarre. Fuzz: oben stachlige Haare mit kurzen Seiten, Shirt mit Blitz, Jeans mit Riss, Turnschuhe, schwarzes Schweissband, rote Rock-Gitarre.

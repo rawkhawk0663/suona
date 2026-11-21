@@ -28,8 +28,8 @@ class StaffView extends StatelessWidget {
   const StaffView({
     super.key,
     required this.notes,
-    this.lineColor = SuonaColors.ink,
-    this.noteColor = SuonaColors.ink,
+    this.lineColor = SuonaColors.paperInk,
+    this.noteColor = SuonaColors.paperInk,
     this.drawStaff = true,
     this.drawNotes = true,
     this.chord = false,

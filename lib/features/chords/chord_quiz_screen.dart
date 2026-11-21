@@ -15,7 +15,8 @@ import '../../core/music/note_names.dart';
 import '../../core/profiles/profile.dart';
 import '../../core/suona_state.dart';
 import '../../widgets/chord_board.dart';
-import '../../widgets/stage.dart';
+import '../../widgets/game_parts.dart';
+import '../../widgets/visuals.dart';
 import '../../widgets/staff.dart';
 import '../quiz/quiz_screen.dart' show LifePick, PedalButton;
 import '../quiz/result_screen.dart';
@@ -375,11 +376,10 @@ class _ChordQuizScreenState extends State<ChordQuizScreen> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: StageBackground(
-        floor: false,
+      body: AppBackground(
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            padding: const EdgeInsets.fromLTRB(28, 20, 28, 24),
             child: Column(
               children: [
                 _header(),
@@ -451,7 +451,7 @@ class _ChordQuizScreenState extends State<ChordQuizScreen> with SingleTickerProv
         final p = FretPosition(e.key, e.value);
         final right = target.contains(p);
         final color = switch (_phase) {
-          _Phase.asking => SuonaColors.violet,
+          _Phase.asking => SuonaColors.accent,
           _Phase.correct => SuonaColors.ok,
           _Phase.wrong => right ? SuonaColors.ok : SuonaColors.wrong,
         };
@@ -472,14 +472,14 @@ class _ChordQuizScreenState extends State<ChordQuizScreen> with SingleTickerProv
         if (showSolution) {
           marks[s] = targetMuted.contains(s) ? OpenMark.muted : OpenMark.open;
           final mine = _muted.contains(s);
-          if (_phase == _Phase.wrong && mine != targetMuted.contains(s)) markColors[s] = SuonaColors.spot;
+          if (_phase == _Phase.wrong && mine != targetMuted.contains(s)) markColors[s] = SuonaColors.gold;
         } else {
           marks[s] = _muted.contains(s) ? OpenMark.muted : OpenMark.open;
         }
       }
     } else {
       final color = switch (_phase) {
-        _Phase.asking => SuonaColors.spot,
+        _Phase.asking => SuonaColors.accent,
         _Phase.correct => SuonaColors.ok,
         _Phase.wrong => SuonaColors.wrong,
       };
@@ -490,11 +490,8 @@ class _ChordQuizScreenState extends State<ChordQuizScreen> with SingleTickerProv
         if (!target.any((p) => p.string == s)) marks[s] = targetMuted.contains(s) ? OpenMark.muted : OpenMark.open;
       }
     }
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 980),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(10, 12, 16, 6),
-        decoration: BoxDecoration(color: SuonaColors.stageFloor, borderRadius: BorderRadius.circular(22)),
+    return BoardCard(
+        maxWidth: 980,
         child: ChordBoard(
           key: ValueKey('cb$_asked'),
           strings: _strings,
@@ -505,28 +502,21 @@ class _ChordQuizScreenState extends State<ChordQuizScreen> with SingleTickerProv
           lowStringOnTop: _state.settings.lowStringOnTop,
           onTap: _task == ChordTask.build && _phase == _Phase.asking ? _tapBoard : null,
         ),
-      ),
     );
   }
 
   Widget _staffCard() {
     final color = switch (_phase) {
-      _Phase.asking => SuonaColors.ink,
-      _Phase.correct => SuonaColors.okDeep,
-      _Phase.wrong => SuonaColors.wrong,
+      _Phase.asking => SuonaColors.paperInk,
+      _Phase.correct => SuonaColors.paperOk,
+      _Phase.wrong => SuonaColors.paperWrong,
     };
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 760),
         child: AspectRatio(
           aspectRatio: 1.9,
-          child: Container(
-            decoration: BoxDecoration(
-              color: SuonaColors.paper,
-              borderRadius: BorderRadius.circular(26),
-              boxShadow: const [BoxShadow(color: Color(0x55000000), blurRadius: 24, offset: Offset(0, 8))],
-            ),
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+          child: PaperCard(
             child: StaffView(
               key: ValueKey('st$_asked'),
               chord: true,
@@ -542,12 +532,16 @@ class _ChordQuizScreenState extends State<ChordQuizScreen> with SingleTickerProv
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(tr('Baue', 'Build'), style: display(28, color: SuonaColors.onStageMuted, weight: FontWeight.w700)),
-        const SizedBox(width: 12),
+        Text(tr('Baue', 'Build'), style: display(26, color: SuonaColors.muted, weight: FontWeight.w600)),
+        const SizedBox(width: 14),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 2),
-          decoration: BoxDecoration(color: SuonaColors.spot, borderRadius: BorderRadius.circular(16)),
-          child: Text(chordName(_chord, _naming), style: display(44, color: SuonaColors.ink)),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+          decoration: BoxDecoration(
+            gradient: gradientOf(SuonaColors.brand, horizontal: true),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: glowOf(SuonaColors.brand, strength: 0.3),
+          ),
+          child: Text(chordName(_chord, _naming), style: display(40, color: Colors.white)),
         ),
       ],
     );
@@ -559,41 +553,31 @@ class _ChordQuizScreenState extends State<ChordQuizScreen> with SingleTickerProv
         : tr('Tippe die Punkte, dann „Fertig“.', 'Tap the dots, then “Done”.');
     return Column(
       children: [
-        Text(hint, style: const TextStyle(color: SuonaColors.onStageMuted, fontSize: 15)),
+        Text(hint, style: body(15, color: SuonaColors.muted)),
         const SizedBox(height: 8),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            OutlinedButton.icon(
+            GradientButton(
+              label: tr('Leeren', 'Clear'),
+              icon: Icons.backspace_rounded,
+              secondary: true,
+              height: 60,
+              fontSize: 20,
               onPressed: _phase == _Phase.asking && (_placed.isNotEmpty || _muted.isNotEmpty)
                   ? () => setState(() {
                       _placed.clear();
                       _muted.clear();
                     })
                   : null,
-              icon: const Icon(Icons.backspace_rounded),
-              label: Text(tr('Leeren', 'Clear')),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: SuonaColors.onStage,
-                disabledForegroundColor: SuonaColors.onStageMuted.withValues(alpha: 0.5),
-                side: const BorderSide(color: SuonaColors.stageLine, width: 2),
-                textStyle: display(22),
-                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
-              ),
             ),
-            const SizedBox(width: 18),
-            FilledButton.icon(
+            const SizedBox(width: 16),
+            GradientButton(
+              label: tr('Fertig', 'Done'),
+              icon: Icons.check_rounded,
+              height: 60,
+              fontSize: 22,
               onPressed: _phase == _Phase.asking ? () => _evaluate(_builtRight) : null,
-              icon: const Icon(Icons.check_rounded, size: 30),
-              label: Text(tr('Fertig', 'Done')),
-              style: FilledButton.styleFrom(
-                backgroundColor: SuonaColors.spot,
-                foregroundColor: SuonaColors.ink,
-                disabledBackgroundColor: SuonaColors.stageFloor,
-                disabledForegroundColor: SuonaColors.onStageMuted.withValues(alpha: 0.5),
-                textStyle: display(26),
-                padding: const EdgeInsets.symmetric(horizontal: 34, vertical: 14),
-              ),
             ),
           ],
         ),
@@ -612,13 +596,13 @@ class _ChordQuizScreenState extends State<ChordQuizScreen> with SingleTickerProv
           alignment: WrapAlignment.center,
           children: [
             for (final o in _options)
-              _NameButton(
+              AnswerButton(
                 label: chordName(o, _naming),
                 width: size,
-                height: min(84.0, size * 0.8),
+                height: min(92.0, size * 0.84),
                 state: _answered == o
-                    ? (_phase == _Phase.correct ? _BtnState.right : _BtnState.wrong)
-                    : (_phase == _Phase.wrong && o == _chord ? _BtnState.hint : _BtnState.normal),
+                    ? (_phase == _Phase.correct ? AnswerState.right : AnswerState.wrong)
+                    : (_phase == _Phase.wrong && o == _chord ? AnswerState.hint : AnswerState.normal),
                 hidden: _hidden.contains(o),
                 onTap: _phase == _Phase.asking && !_hidden.contains(o) ? () => _answerName(o) : null,
               ),
@@ -637,33 +621,13 @@ class _ChordQuizScreenState extends State<ChordQuizScreen> with SingleTickerProv
         : ok
         ? '$name!'
         : (_task == ChordTask.build ? tr('So geht $name', 'This is $name') : tr('Das ist $name', 'That’s $name'));
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-      decoration: BoxDecoration(
-        color: _shielded ? SuonaColors.violet : (ok ? SuonaColors.ok : SuonaColors.wrong),
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: const [BoxShadow(color: Color(0x44000000), blurRadius: 10, offset: Offset(0, 4))],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            _shielded
-                ? Icons.shield_rounded
-                : (ok ? Icons.check_circle_rounded : (timeout ? Icons.timer_off_rounded : Icons.close_rounded)),
-            color: Colors.white,
-            size: 30,
-          ),
-          const SizedBox(width: 8),
-          Text(text, style: display(30, color: Colors.white)),
-          if (ok) ...[
-            const SizedBox(width: 12),
-            const CoinIcon(size: 22),
-            const SizedBox(width: 4),
-            Text('+$_lastGain', style: display(24, color: Colors.white)),
-          ],
-        ],
-      ),
+    return FeedbackBadge(
+      kind: _shielded ? FeedbackKind.shield : (ok ? FeedbackKind.right : FeedbackKind.wrong),
+      icon: _shielded
+          ? Icons.shield_rounded
+          : (ok ? Icons.check_rounded : (timeout ? Icons.timer_off_rounded : Icons.close_rounded)),
+      text: text,
+      gain: ok ? _lastGain : null,
     );
   }
 
@@ -671,16 +635,20 @@ class _ChordQuizScreenState extends State<ChordQuizScreen> with SingleTickerProv
   Widget _songSheet() {
     final song = _song!;
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
-      decoration: BoxDecoration(color: SuonaColors.paper, borderRadius: BorderRadius.circular(18)),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+      decoration: BoxDecoration(
+        color: SuonaColors.card,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: SuonaColors.line),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.queue_music_rounded, color: SuonaColors.red),
+              Icon(Icons.queue_music_rounded, color: SuonaColors.accent),
               const SizedBox(width: 8),
-              Text(song.title, style: display(20, color: SuonaColors.ink)),
+              Text(song.title, style: display(20)),
             ],
           ),
           const SizedBox(height: 6),
@@ -690,16 +658,21 @@ class _ChordQuizScreenState extends State<ChordQuizScreen> with SingleTickerProv
             children: [
               for (var i = 0; i < song.bars.length; i++)
                 Container(
-                  width: 64,
-                  height: 40,
+                  width: 66,
+                  height: 42,
+                  margin: const EdgeInsets.only(right: 6),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    gradient: i == _results.length ? gradientOf(SuonaColors.brand) : null,
                     color: i < _results.length
-                        ? (_results[i] ? SuonaColors.ok.withValues(alpha: 0.25) : SuonaColors.wrong.withValues(alpha: 0.25))
-                        : (i == _results.length ? SuonaColors.spot : Colors.transparent),
-                    border: const Border(left: BorderSide(color: SuonaColors.ink, width: 2)),
+                        ? (_results[i] ? SuonaColors.ok.withValues(alpha: 0.22) : SuonaColors.wrong.withValues(alpha: 0.25))
+                        : (i == _results.length ? null : SuonaColors.cardHigh),
                   ),
-                  child: Text(chordName(song.bars[i], _naming), style: display(20, color: SuonaColors.ink)),
+                  child: Text(
+                    chordName(song.bars[i], _naming),
+                    style: display(19, color: i == _results.length ? Colors.white : SuonaColors.ink),
+                  ),
                 ),
             ],
           ),
@@ -711,7 +684,7 @@ class _ChordQuizScreenState extends State<ChordQuizScreen> with SingleTickerProv
   Widget _header() {
     return Row(
       children: [
-        StageIconButton(
+        RoundIconButton(
           icon: Icons.close_rounded,
           tooltip: tr('Beenden', 'Quit'),
           onPressed: () => Navigator.of(context).pop(),
@@ -719,43 +692,18 @@ class _ChordQuizScreenState extends State<ChordQuizScreen> with SingleTickerProv
         const SizedBox(width: 14),
         Expanded(child: _arcade ? _livesRow() : (_song != null ? _songTitle() : _progressDots())),
         const SizedBox(width: 12),
-        if (_combo.multiplier > 1)
-          Container(
-            margin: const EdgeInsets.only(right: 12),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            decoration: BoxDecoration(color: SuonaColors.coral, borderRadius: BorderRadius.circular(20)),
-            child: Text('Combo ×${_combo.multiplier}', style: display(18, color: Colors.white)),
-          ),
-        CoinCount(_coins, size: 26),
+        if (_combo.multiplier > 1) ...[ComboBadge(_combo.multiplier), const SizedBox(width: 12)],
+        InfoPill(child: CoinCount(_coins, size: 21)),
       ],
     );
   }
 
   Widget _songTitle() => Text(
     tr('Lied begleiten', 'Play along'),
-    style: display(26, color: SuonaColors.onStage),
+    style: display(24),
   );
 
-  Widget _progressDots() {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 6,
-      children: [
-        for (var i = 0; i < _total; i++)
-          Container(
-            width: 22,
-            height: 22,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: i < _results.length
-                  ? (_results[i] ? SuonaColors.ok : SuonaColors.wrong)
-                  : (i == _results.length ? SuonaColors.onStage : SuonaColors.stageFloor),
-              border: Border.all(color: SuonaColors.stageLine, width: 2),
-            ),
-          ),
-      ],
-    );
-  }
+  Widget _progressDots() => ProgressDots(total: _total, results: _results);
 
   Widget _livesRow() {
     return Row(
@@ -765,62 +713,19 @@ class _ChordQuizScreenState extends State<ChordQuizScreen> with SingleTickerProv
         const SizedBox(width: 10),
         Text(
           tr('${_results.where((r) => r).length} richtig', '${_results.where((r) => r).length} right'),
-          style: display(20, color: SuonaColors.onStageMuted, weight: FontWeight.w700),
+          style: display(19, color: SuonaColors.muted, weight: FontWeight.w600),
         ),
       ],
     );
   }
 
-  Widget _timeBar() {
-    return AnimatedBuilder(
-      animation: _timer,
-      builder: (context, _) {
-        final left = 1 - _timer.value;
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: LinearProgressIndicator(
-            value: left,
-            minHeight: 12,
-            backgroundColor: SuonaColors.stageFloor,
-            color: left < 0.25 ? SuonaColors.coral : SuonaColors.spot,
-          ),
-        );
-      },
-    );
-  }
+  Widget _timeBar() => TimeBar(timer: _timer);
 
   Widget _crowdAndPedals() {
-    final mood = _crowd;
-    final color = mood > 0.55 ? SuonaColors.ok : (mood > 0.25 ? SuonaColors.spot : SuonaColors.coral);
-    return Row(
-      children: [
-        Icon(
-          mood > 0.55
-              ? Icons.sentiment_very_satisfied_rounded
-              : (mood > 0.25 ? Icons.sentiment_neutral_rounded : Icons.sentiment_very_dissatisfied_rounded),
-          color: color,
-          size: 30,
-        ),
-        const SizedBox(width: 8),
-        Text(tr('Publikum', 'Crowd'), style: display(18, color: SuonaColors.onStage, weight: FontWeight.w700)),
-        const SizedBox(width: 10),
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(end: mood),
-              duration: const Duration(milliseconds: 350),
-              builder: (context, v, _) => LinearProgressIndicator(
-                value: v,
-                minHeight: 14,
-                backgroundColor: SuonaColors.stageFloor,
-                color: color,
-              ),
-            ),
-          ),
-        ),
-        for (final id in _cfg.pedals) ...[
-          const SizedBox(width: 10),
+    return CrowdBar(
+      mood: _crowd,
+      pedals: [
+        for (final id in _cfg.pedals)
           PedalButton(
             id: id,
             used: _usedPedals.contains(id),
@@ -828,62 +733,7 @@ class _ChordQuizScreenState extends State<ChordQuizScreen> with SingleTickerProv
             enabled: _phase == _Phase.asking && !_usedPedals.contains(id) && _pedalUseful(id),
             onTap: () => _usePedal(id),
           ),
-        ],
       ],
-    );
-  }
-}
-
-enum _BtnState { normal, right, wrong, hint }
-
-class _NameButton extends StatelessWidget {
-  const _NameButton({
-    required this.label,
-    required this.width,
-    required this.height,
-    required this.state,
-    required this.onTap,
-    this.hidden = false,
-  });
-  final String label;
-  final double width;
-  final double height;
-  final _BtnState state;
-  final VoidCallback? onTap;
-  final bool hidden;
-
-  @override
-  Widget build(BuildContext context) {
-    final (bg, fg) = switch (state) {
-      _BtnState.normal => (SuonaColors.onStage, SuonaColors.ink),
-      _BtnState.right => (SuonaColors.ok, Colors.white),
-      _BtnState.wrong => (SuonaColors.wrong, Colors.white),
-      _BtnState.hint => (SuonaColors.spot, SuonaColors.ink),
-    };
-    return SizedBox(
-      width: width,
-      height: height,
-      child: Opacity(
-        opacity: hidden ? 0.18 : 1,
-        child: Material(
-          color: bg,
-          borderRadius: BorderRadius.circular(height * 0.28),
-          elevation: 3,
-          shadowColor: Colors.black54,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(height * 0.28),
-            onTap: onTap,
-            child: Center(
-              child: FittedBox(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Text(label, style: display(height * 0.5, color: fg)),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

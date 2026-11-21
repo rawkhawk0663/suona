@@ -86,7 +86,7 @@ class _GateDialogState extends State<_GateDialog> {
               child: _wrong
                   ? Text(
                       tr('Nicht ganz. Neue Aufgabe.', 'Not quite. New task.'),
-                      style: const TextStyle(color: SuonaColors.wrong),
+                      style: TextStyle(color: SuonaColors.wrong),
                     )
                   : null,
             ),

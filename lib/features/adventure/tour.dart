@@ -116,7 +116,7 @@ class NoteTour extends TourSpec {
       children: [
         Text(
           tr('Neue Töne hier', 'New notes here'),
-          style: display(20, color: SuonaColors.onStage, weight: FontWeight.w700),
+          style: display(20, color: SuonaColors.ink, weight: FontWeight.w700),
         ),
         const SizedBox(height: 6),
         Container(
@@ -128,7 +128,7 @@ class NoteTour extends TourSpec {
         const SizedBox(height: 4),
         Text(
           fresh.map((n) => pitchNameWithOctave(n, s.naming)).join(' · '),
-          style: const TextStyle(color: SuonaColors.onStageMuted, fontSize: 15),
+          style: TextStyle(color: SuonaColors.muted, fontSize: 15),
         ),
       ],
     );
@@ -137,4 +137,18 @@ class NoteTour extends TourSpec {
   @override
   Future<void> startLevel(BuildContext context, SuonaState s, Profile p, int station, int level, {bool replace = false}) =>
       startNoteLevel(context, s, p, station, level, replace: replace);
+}
+
+/// Wo es im Abenteuer weitergeht: das erste offene Level ohne Stern.
+/// `waiting` = die nächste Station wartet auf die Lehrperson, `done` = alles geschafft.
+({int station, int level, bool waiting, bool done}) nextStop(TourSpec tour, SuonaState s, Profile p) {
+  final stars = tour.progress(s, p);
+  for (var st = 0; st < tour.stationCount; st++) {
+    for (var l = 0; l < tour.levelsPerStation; l++) {
+      if (stars[st][l] > 0) continue;
+      final open = tour.levelOpen(s, p, st, l);
+      return (station: st, level: l, waiting: !open, done: false);
+    }
+  }
+  return (station: tour.stationCount - 1, level: tour.concertLevel, waiting: false, done: true);
 }

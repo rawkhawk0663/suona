@@ -165,7 +165,7 @@ class _ChordBoardPainter extends CustomPainter {
           colors: [_woodDark, _wood, _woodDark],
         ).createShader(board),
     );
-    canvas.drawRRect(RRect.fromRectAndCorners(open, topLeft: r, bottomLeft: r), Paint()..color = SuonaColors.stageLine);
+    canvas.drawRRect(RRect.fromRectAndCorners(open, topLeft: r, bottomLeft: r), Paint()..color = SuonaColors.line);
 
     // Einlagen beim 3. und 5. Bund (zur Orientierung wie auf der Gitarre)
     final inlay = Paint()..color = _inlay.withValues(alpha: 0.8);
@@ -197,20 +197,20 @@ class _ChordBoardPainter extends CustomPainter {
         canvas,
         names[s - 1],
         Offset(ChordBoardGeometry.labelWidth / 2, y),
-        display(min(26, g.stringGap * 0.55), color: SuonaColors.onStage),
+        display(min(26, g.stringGap * 0.55), color: SuonaColors.ink),
       );
       // „o“ oder „x“ in der Zone der leeren Saiten
       final mark = openMarks[s] ?? OpenMark.none;
       if (mark != OpenMark.none) {
         final c = Offset(ChordBoardGeometry.labelWidth + g.fretWidth * ChordBoardGeometry.openZone / 2, y);
-        final color = openColors[s] ?? SuonaColors.onStage;
+        final color = openColors[s] ?? SuonaColors.ink;
         final rad = min(g.dotRadius * 0.5, 22.0);
         final stroke = Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = max(3.0, rad * 0.28)
           ..strokeCap = StrokeCap.round
           ..color = color;
-        canvas.drawCircle(c, rad + 4, Paint()..color = SuonaColors.stage.withValues(alpha: 0.85));
+        canvas.drawCircle(c, rad + 4, Paint()..color = SuonaColors.background.withValues(alpha: 0.85));
         if (mark == OpenMark.open) {
           canvas.drawCircle(c, rad, stroke);
         } else {
@@ -226,7 +226,7 @@ class _ChordBoardPainter extends CustomPainter {
         canvas,
         '$f',
         Offset(g.nutX + (f - 0.5) * g.fretWidth, g.boardBottom + ChordBoardGeometry.numbersHeight / 2 + 1),
-        display(17, color: SuonaColors.onStageMuted, weight: FontWeight.w700),
+        display(17, color: SuonaColors.muted, weight: FontWeight.w700),
       );
     }
 

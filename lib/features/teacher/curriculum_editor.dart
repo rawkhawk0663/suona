@@ -166,7 +166,7 @@ class _CurriculumEditorState extends State<CurriculumEditor> {
             if (_readOnly)
               Text(
                 '${widget.curriculum.description}\n${tr('Eingebaute Lehrpläne lassen sich nicht ändern. Mit „Als eigenen kopieren“ entsteht eine Kopie, die du anpassen kannst.', 'Built-in curricula can’t be changed. “Copy to edit” makes a copy you can adjust.')}',
-                style: const TextStyle(color: SuonaColors.inkMuted, fontSize: 16),
+                style: TextStyle(color: SuonaColors.muted, fontSize: 16),
               )
             else
               TextField(
@@ -212,7 +212,7 @@ class _CurriculumEditorState extends State<CurriculumEditor> {
               children: [
                 CircleAvatar(
                   radius: 16,
-                  backgroundColor: SuonaColors.red,
+                  backgroundColor: SuonaColors.accent,
                   child: Text('${i + 1}', style: display(16, color: Colors.white)),
                 ),
                 const SizedBox(width: 12),
@@ -277,7 +277,7 @@ class _CurriculumEditorState extends State<CurriculumEditor> {
               children: [
                 for (final n in notes) Chip(label: Text(pitchNameWithOctave(n, naming))),
                 if (notes.isEmpty)
-                  Text(tr('Noch keine Töne', 'No notes yet'), style: const TextStyle(color: SuonaColors.inkMuted)),
+                  Text(tr('Noch keine Töne', 'No notes yet'), style: TextStyle(color: SuonaColors.muted)),
                 if (!_readOnly)
                   ActionChip(
                     avatar: const Icon(Icons.edit_rounded, size: 18),
@@ -342,7 +342,7 @@ class _NotePickerDialogState extends State<_NotePickerDialog> {
               ),
               Text(
                 tr('Grau: schon in einem früheren Schritt.', 'Grey: already in an earlier step.'),
-                style: const TextStyle(color: SuonaColors.inkMuted),
+                style: TextStyle(color: SuonaColors.muted),
               ),
               const SizedBox(height: 8),
               for (final (label, pitches) in rows) ...[

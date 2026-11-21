@@ -4,6 +4,7 @@ import '../../app/l10n.dart';
 import '../../app/theme.dart';
 import '../../core/game/badges.dart';
 import '../../core/profiles/profile.dart';
+import '../../widgets/visuals.dart';
 
 /// Alle Abzeichen: verdiente leuchten, die anderen zeigen, wie man sie bekommt.
 Future<void> showBadges(BuildContext context, Profile p) {
@@ -11,8 +12,7 @@ Future<void> showBadges(BuildContext context, Profile p) {
   return showDialog<void>(
     context: context,
     builder: (c) => AlertDialog(
-      backgroundColor: SuonaColors.stage,
-      title: Text(tr('Deine Abzeichen', 'Your badges'), style: display(30, color: SuonaColors.spot)),
+      title: Text(tr('Deine Abzeichen', 'Your badges'), style: display(28)),
       content: SizedBox(
         width: 640,
         child: SingleChildScrollView(
@@ -25,27 +25,30 @@ Future<void> showBadges(BuildContext context, Profile p) {
                   width: 196,
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: b.earned ? SuonaColors.stageLine : SuonaColors.stageFloor,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: b.earned ? SuonaColors.spot : Colors.transparent, width: 2),
+                    color: SuonaColors.cardHigh,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: SuonaColors.line),
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        b.earned ? Icons.military_tech_rounded : Icons.lock_outline_rounded,
-                        size: 38,
-                        color: b.earned ? SuonaColors.spot : SuonaColors.onStageMuted,
-                      ),
-                      const SizedBox(width: 8),
+                      b.earned
+                          ? GradientIcon(Icons.military_tech_rounded, colors: SuonaColors.sun, size: 44, circle: true)
+                          : Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(shape: BoxShape.circle, color: SuonaColors.card),
+                              child: Icon(Icons.lock_outline_rounded, size: 22, color: SuonaColors.muted),
+                            ),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               b.name,
-                              style: display(17, color: b.earned ? SuonaColors.onStage : SuonaColors.onStageMuted),
+                              style: display(17, color: b.earned ? SuonaColors.ink : SuonaColors.muted),
                             ),
-                            Text(b.help, style: const TextStyle(color: SuonaColors.onStageMuted, fontSize: 13)),
+                            Text(b.help, style: body(13, color: SuonaColors.muted)),
                           ],
                         ),
                       ),
@@ -57,11 +60,7 @@ Future<void> showBadges(BuildContext context, Profile p) {
         ),
       ),
       actions: [
-        FilledButton(
-          onPressed: () => Navigator.pop(c),
-          style: FilledButton.styleFrom(backgroundColor: SuonaColors.spot, foregroundColor: SuonaColors.ink),
-          child: Text(tr('Schliessen', 'Close')),
-        ),
+        GradientButton(label: tr('Schliessen', 'Close'), height: 48, fontSize: 17, onPressed: () => Navigator.pop(c)),
       ],
     ),
   );

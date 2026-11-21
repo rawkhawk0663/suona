@@ -165,7 +165,7 @@ class _FretboardPainter extends CustomPainter {
         ).createShader(board),
     );
     // Zone der leeren Saiten: etwas heller, wie die Kopfplatte
-    canvas.drawRRect(RRect.fromRectAndCorners(open, topLeft: r, bottomLeft: r), Paint()..color = SuonaColors.stageLine);
+    canvas.drawRRect(RRect.fromRectAndCorners(open, topLeft: r, bottomLeft: r), Paint()..color = SuonaColors.line);
 
     // Abgedunkelte Bünde ausserhalb des Bereichs
     final dim = Paint()..color = Colors.black.withValues(alpha: 0.45);
@@ -208,7 +208,7 @@ class _FretboardPainter extends CustomPainter {
           Rect.fromLTRB(g.labelWidth, y - g.stringGap * 0.42, size.width, y + g.stringGap * 0.42),
           const Radius.circular(8),
         ),
-        Paint()..color = SuonaColors.spot.withValues(alpha: 0.28),
+        Paint()..color = SuonaColors.teal.withValues(alpha: 0.32),
       );
     }
 
@@ -228,7 +228,7 @@ class _FretboardPainter extends CustomPainter {
         canvas,
         names[s - 1],
         Offset(g.labelWidth / 2, y),
-        display(min(22, g.stringGap * 0.62), color: active ? SuonaColors.onStage : SuonaColors.onStageMuted),
+        display(min(22, g.stringGap * 0.62), color: active ? SuonaColors.ink : SuonaColors.muted),
       );
     }
 
@@ -239,7 +239,7 @@ class _FretboardPainter extends CustomPainter {
         canvas,
         '$f',
         Offset(x, g.boardBottom + FretboardGeometry.numbersHeight / 2 + 1),
-        display(16, color: SuonaColors.onStageMuted, weight: FontWeight.w700),
+        display(16, color: SuonaColors.muted, weight: FontWeight.w700),
       );
     }
 

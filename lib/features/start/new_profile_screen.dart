@@ -5,7 +5,7 @@ import '../../app/theme.dart';
 import '../../core/character/look.dart';
 import '../../core/game/shop.dart';
 import '../../core/suona_state.dart';
-import '../../widgets/stage.dart';
+import '../../widgets/visuals.dart';
 
 /// Neues Profil: Figur und Startgitarre wählen und einen Spitznamen geben.
 class NewProfileScreen extends StatefulWidget {
@@ -46,14 +46,14 @@ class _NewProfileScreenState extends State<NewProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: StageBackground(
+      body: AppBackground(
         child: SafeArea(
           child: Stack(
             children: [
               Positioned(
                 top: 12,
                 left: 12,
-                child: StageIconButton(
+                child: RoundIconButton(
                   icon: Icons.arrow_back_rounded,
                   tooltip: tr('Zurück', 'Back'),
                   onPressed: () => Navigator.of(context).pop(),
@@ -69,7 +69,7 @@ class _NewProfileScreenState extends State<NewProfileScreen> {
                         Text(
                           tr('Mit wem willst du rocken?', 'Who do you want to rock with?'),
                           textAlign: TextAlign.center,
-                          style: display(34, color: SuonaColors.onStage),
+                          style: display(32),
                         ),
                         const SizedBox(height: 22),
                         Row(
@@ -94,7 +94,7 @@ class _NewProfileScreenState extends State<NewProfileScreen> {
                           Text(
                             tr('Welche Gitarre spielst du?', 'Which guitar do you play?'),
                             textAlign: TextAlign.center,
-                            style: display(28, color: SuonaColors.onStage),
+                            style: display(26),
                           ),
                           const SizedBox(height: 14),
                           Row(
@@ -124,13 +124,13 @@ class _NewProfileScreenState extends State<NewProfileScreen> {
                               'There are lots more guitars in the shop later.',
                             ),
                             textAlign: TextAlign.center,
-                            style: const TextStyle(color: SuonaColors.onStageMuted, fontSize: 15),
+                            style: body(15, color: SuonaColors.muted),
                           ),
                         ],
                         const SizedBox(height: 26),
                         Text(
                           tr('Wie sollen wir dich nennen?', 'What should we call you?'),
-                          style: display(24, color: SuonaColors.onStage, weight: FontWeight.w700),
+                          style: display(24),
                         ),
                         const SizedBox(height: 10),
                         TextField(
@@ -138,15 +138,13 @@ class _NewProfileScreenState extends State<NewProfileScreen> {
                           maxLength: 16,
                           textAlign: TextAlign.center,
                           textCapitalization: TextCapitalization.words,
-                          style: display(28, color: SuonaColors.ink),
+                          style: display(26),
                           onChanged: (_) => setState(() {}),
                           onSubmitted: (_) => _create(),
                           decoration: InputDecoration(
-                            filled: true,
-                            fillColor: SuonaColors.paper,
-                            counterStyle: const TextStyle(color: SuonaColors.onStageMuted),
+                            counterStyle: body(13, color: SuonaColors.muted),
                             hintText: tr('Spitzname', 'Nickname'),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(18)),
+                            hintStyle: display(26, color: SuonaColors.muted, weight: FontWeight.w600),
                           ),
                         ),
                         Text(
@@ -155,20 +153,15 @@ class _NewProfileScreenState extends State<NewProfileScreen> {
                             'A nickname is enough. Please don’t use your full real name.',
                           ),
                           textAlign: TextAlign.center,
-                          style: const TextStyle(color: SuonaColors.onStageMuted, fontSize: 15),
+                          style: body(15, color: SuonaColors.muted),
                         ),
-                        const SizedBox(height: 22),
-                        FilledButton.icon(
+                        const SizedBox(height: 26),
+                        GradientButton(
+                          label: tr('Los geht’s!', 'Let’s go!'),
+                          icon: Icons.play_arrow_rounded,
+                          height: 64,
+                          fontSize: 24,
                           onPressed: _ready ? _create : null,
-                          icon: const Icon(Icons.play_arrow_rounded, size: 30),
-                          label: Text(tr('Los geht’s!', 'Let’s go!')),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: SuonaColors.spot,
-                            foregroundColor: SuonaColors.ink,
-                            disabledBackgroundColor: SuonaColors.stageFloor,
-                            textStyle: display(26),
-                            padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 16),
-                          ),
                         ),
                       ],
                     ),
@@ -191,29 +184,17 @@ class _CharacterChoice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedScale(
-      scale: selected ? 1.04 : 1,
-      duration: const Duration(milliseconds: 180),
-      child: Material(
-        color: selected ? SuonaColors.stageLine : SuonaColors.stageFloor,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(26),
-          side: BorderSide(color: selected ? SuonaColors.spot : Colors.transparent, width: 4),
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(26),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(10, 16, 10, 12),
-            child: Column(
-              children: [
-                SizedBox(height: 230, child: CharacterView(look)),
-                const SizedBox(height: 6),
-                Text(look.character.displayName, style: display(30, color: SuonaColors.spot)),
-              ],
-            ),
-          ),
-        ),
+    return ChoiceCard(
+      selected: selected,
+      onTap: onTap,
+      radius: 26,
+      padding: const EdgeInsets.fromLTRB(10, 16, 10, 14),
+      child: Column(
+        children: [
+          SizedBox(height: 230, child: CharacterView(look)),
+          const SizedBox(height: 8),
+          Text(look.character.displayName, style: display(28)),
+        ],
       ),
     );
   }
@@ -229,25 +210,16 @@ class _GuitarChoice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: selected ? SuonaColors.stageLine : SuonaColors.stageFloor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(22),
-        side: BorderSide(color: selected ? SuonaColors.spot : Colors.transparent, width: 4),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(22),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(10, 12, 10, 12),
-          child: Column(
-            children: [
-              SizedBox(height: 150, child: CharacterView(look, guitar: true)),
-              const SizedBox(height: 6),
-              Text(label, textAlign: TextAlign.center, style: display(22, color: SuonaColors.spot)),
-            ],
-          ),
-        ),
+    return ChoiceCard(
+      selected: selected,
+      onTap: onTap,
+      padding: const EdgeInsets.fromLTRB(10, 12, 10, 14),
+      child: Column(
+        children: [
+          SizedBox(height: 150, child: CharacterView(look, guitar: true)),
+          const SizedBox(height: 8),
+          Text(label, textAlign: TextAlign.center, style: display(20)),
+        ],
       ),
     );
   }
