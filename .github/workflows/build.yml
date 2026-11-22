@@ -156,26 +156,6 @@ jobs:
             exit 1
           fi
           MSG=$(printf '%s' "$COMMIT_MSG" | head -1)
-          mkdir dist
-          gh release download "$TAG" --repo "${{ github.repository }}" --dir dist
-          ls -l dist
-          gh release edit "$TAG" \
-            --repo "${{ github.repository }}" \
-            --notes "Automatischer Build. Änderung: ${MSG:-manuell gestartet}" \
-            --draft=false --prerelease=false --latest
-      # Zusätzlich im öffentlichen Download-Projekt ablegen (ohne Programmcode).
-      # Von dort sucht Suona nach Updates. Fehlt der Schlüssel, wird es übersprungen.
-      - name: Downloads im öffentlichen Projekt ablegen
-        env:
-          GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
-          COMMIT_MSG: ${{ github.event.head_commit.message }}
-        run: |
-          if [ -z "$GH_TOKEN" ]; then
-            echo "Kein RELEASES_TOKEN hinterlegt – übersprungen."
-            exit 0
-          fi
-          TAG="v${{ env.VERSION_PREFIX }}.${{ github.run_number }}"
-          MSG=$(printf '%s' "$COMMIT_MSG" | head -1)
           cat > notes.md <<EOT
           **Neu / New:** ${MSG:-Verbesserungen}
 
@@ -190,8 +170,8 @@ jobs:
           \`Suona-Android.apk\`: Android-Testversion / Android test version.
           EOT
           sed -i 's/^          //' notes.md
-          gh release create "$TAG" dist/* \
-            --repo "rawkhawk0663/suona-releases" \
+          gh release edit "$TAG" \
+            --repo "${{ github.repository }}" \
             --title "Suona $TAG" \
             --notes-file notes.md \
-            --latest
+            --draft=false --prerelease=false --latest

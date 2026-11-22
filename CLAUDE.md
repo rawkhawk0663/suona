@@ -23,7 +23,7 @@ Der Bauplan (fünf Pakete) liegt als Artifact „Suona Bauplan“ beim Besitzer.
 - Oberfläche Deutsch (Grundsprache, Schweizer Schreibweise: „ss“ statt „ß“) und Englisch (britisch). **Jeder sichtbare Text** als `tr('Deutsch', 'English')` (`lib/app/l10n.dart`, wie bei Volti). Kein `const` um Widgets mit `tr(...)`.
 - Code-Kommentare deutsch, Bezeichner englisch. Ordner- und Dateinamen auf der Festplatte und JSON-Schlüssel nie übersetzen.
 - Kindgerecht schreiben: kurze Sätze, grosse Knöpfe. Die Jüngsten lernen gerade lesen.
-- **Beschreibung im öffentlichen Download-Projekt** (`rawkhawk0663/suona-releases`): `README.md` (Deutsch) und `README.en.md` (Englisch), Bilder in `bilder/` (`suona_icon.png`, `luna_und_fuzz.png`). **Bei jeder sichtbaren Änderung der App ungefragt nachführen** (ausdrücklicher Wunsch des Besitzers): neue Funktionen, geänderte Wege in der Bedienung, „Kommt bald“ abhaken, neues Symbol oder neue Figuren auch als Bild. Das Projekt mit `add_repo` (push) holen, ändern, direkt auf `main` schieben.
+- **Beschreibung** in diesem (öffentlichen) Projekt: `README.md` (Deutsch) und `README.en.md` (Englisch), Bilder in `bilder/` (`suona_icon.png`, `luna_und_fuzz.png`, `startseite.png`). **Bei jeder sichtbaren Änderung der App ungefragt nachführen** (ausdrücklicher Wunsch des Besitzers): neue Funktionen, geänderte Wege in der Bedienung, „Kommt bald“ abhaken, neues Symbol oder neue Figuren auch als Bild. Das frühere Download-Projekt `suona-releases` wird nicht mehr benutzt (Wunsch des Besitzers).
 
 ## Musik
 - `Pitch` speichert den **klingenden** Ton (C4 = c'). Gitarrennoten stehen eine Oktave höher (Violinschlüssel mit kleiner 8), das rechnet `staffStep` ein: 0 = unterste Linie, E2 = −7 (unter der 3. Hilfslinie), E5 = 14 (auf der 3. Hilfslinie oben).
@@ -115,7 +115,7 @@ tool/make_icon.py   erzeugt das App-Symbol wie Volti/Conti (Verlauf + weisse Mar
 - **Bausteine:** `widgets/visuals.dart` (`SuonaCard`, `MenuTile`, `GradientButton`, `GradientIcon`, `RoundIconButton`, `InfoPill`, `ChoiceCard`, `ScreenHeader`, `GradientBar`, `SuonaLogo`, `characterGlow` = weiches Leuchten hinter der Figur) und `widgets/game_parts.dart` (`AnswerButton`: richtig im Mint-Verlauf, falsch rot, Lösung mit Mint-Rand; `FeedbackBadge`, `ProgressDots`, `TimeBar`, `CrowdBar`, `ComboBadge`, `PaperCard`, `BoardCard`). Karten 20–24 Punkte rund mit feinem Rand, keine Schatten ausser dem Leuchten farbiger Knöpfe.
 - Das **Notenblatt** bleibt in beiden Modi weiss (`SuonaColors.paper`, Noten `paperInk`, richtig `paperOk`, falsch `paperWrong`). Griffbrett und Griffbild bleiben Holz.
 - **Startseite** wie im Mockup: links die Figur mit Leuchten, rechts „Weiter im Abenteuer“ (`nextStop` in `tour.dart`), sechs Kacheln, „Heute“ mit den Übungstagen der Woche.
-- **App-Symbol** wie Volti und Conti: Quadrat mit runden Ecken im Verlauf, weisse Marke (`tool/make_icon.py`). Bei Änderungen auch `bilder/suona_icon.png` im Download-Projekt ersetzen.
+- **App-Symbol** wie Volti und Conti: Quadrat mit runden Ecken im Verlauf, weisse Marke (`tool/make_icon.py`). Bei Änderungen auch `bilder/suona_icon.png` ersetzen.
 
 ## Figuren
 - Stil „Mix 2“ (vom Besitzer gewählt, aus einem Vergleich von vier Stilen): grosse, glänzende Chibi-Augen und Bäckchen, dazu dicke dunkle Konturen (`#15121F`), harte Schatten als Sichel und Rock-Details. Luna: lange Haare, Stern im Haar (verschwindet unter Kopfbedeckungen) und auf dem Shirt, korallroter Rock, Ringelstrumpfhose, Stiefel, türkise Pfeil-Gitarre. Fuzz: oben stachlige Haare mit kurzen Seiten, Shirt mit Blitz, Jeans mit Riss, Turnschuhe, schwarzes Schweissband, rote Rock-Gitarre.
@@ -125,11 +125,11 @@ tool/make_icon.py   erzeugt das App-Symbol wie Volti/Conti (Verlauf + weisse Mar
 - Kopf und Körper sind getrennte Gruppen (`HEAD_SCALE` 1.16, `BODY_SCALE` 0.95), die Konturen bleiben trotzdem gleich dick (auch bei den Teilen).
 - Der Anschlagarm liegt vor der Gitarre, der Greifarm hinter dem Hals (Wunsch des Besitzers).
 - Keine Strichelung (`stroke-dasharray`) verwenden, `flutter_svg` kennt sie nicht. Schatten über `clipPath` funktionieren.
-- Das Bild `bilder/luna_und_fuzz.png` im Download-Projekt bei Änderungen an den Grundfiguren neu erzeugen.
+- Das Bild `bilder/luna_und_fuzz.png` bei Änderungen an den Grundfiguren neu erzeugen.
 
 ## Technik
 - Flutter `3.47.9` (in `.github/workflows/build.yml`), Material 3. Hauptgerät: Microsoft Surface (Windows), danach Android, später evtl. iPad.
-- Jeder Push auf `main` baut Windows (ZIP + `Suona-Setup.exe`) und Android (`Suona-Android.apk`) und legt sie als Release ab, zusätzlich im öffentlichen Projekt `rawkhawk0663/suona-releases` (Geheimnis `RELEASES_TOKEN`, ohne Geheimnis übersprungen). Von dort holt „Nach Updates suchen“ die neue Version (Ablauf wie Volti, siehe dort Punkt 33). Die Builds laden ihre Dateien direkt in einen Release-Entwurf (Job `draft`), der am Schluss veröffentlicht wird. Keine `upload-artifact`-Schritte: Der Speicher dafür ist im Konto voll (mit Volti geteilt).
+- Jeder Push auf `main` baut Windows (ZIP + `Suona-Setup.exe`) und Android (`Suona-Android.apk`) und legt sie als Release in diesem öffentlichen Projekt ab (zweisprachige Release-Texte). Von dort holt „Nach Updates suchen“ die neue Version (`Updater.repo`) (Ablauf wie Volti, siehe dort Punkt 33). Die Builds laden ihre Dateien direkt in einen Release-Entwurf (Job `draft`), der am Schluss veröffentlicht wird. Keine `upload-artifact`-Schritte: Der Speicher dafür ist im Konto voll (mit Volti geteilt).
 - Versionsnummer `v0.1.<run_number>` über `--dart-define=SUONA_VERSION`.
 - Bedienung vollständig mit Finger möglich. Tastatur geht zusätzlich (Tasten c d e f g a h, `#` und `-` für die Vorzeichen).
 

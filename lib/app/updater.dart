@@ -10,7 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'version.dart';
 import 'l10n.dart';
 
-/// Eine Version im öffentlichen Download-Projekt auf GitHub.
+/// Eine Version in den Releases des Projekts auf GitHub.
 class UpdateInfo {
   const UpdateInfo({
     required this.tag,
@@ -30,12 +30,11 @@ class UpdateInfo {
 
 /// Sucht nach neuen Versionen und installiert sie (unter Windows).
 ///
-/// Die fertigen Downloads liegen in einem eigenen, öffentlichen Projekt
-/// ([repo], ohne Programmcode) – das eigentliche Projekt bleibt privat.
+/// Die fertigen Downloads liegen als Releases im (öffentlichen) Projekt selbst ([repo]).
 class Updater {
   Updater._();
 
-  static const repo = 'rawkhawk0663/suona-releases';
+  static const repo = 'rawkhawk0663/suona';
 
   /// Laufende Nummer aus „v0.1.42“ bzw. „v1.0.60“ (null = unbekannt, z. B.
   /// Testversion). Sie zählt bei jedem Build weiter, auch über den Wechsel
