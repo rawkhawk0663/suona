@@ -116,11 +116,11 @@ class NoteTour extends TourSpec {
       children: [
         Text(
           tr('Neue Töne hier', 'New notes here'),
-          style: display(20, color: SuonaColors.ink, weight: FontWeight.w700),
+          style: display(MediaQuery.sizeOf(context).height < 520 ? 16 : 20),
         ),
         const SizedBox(height: 6),
         Container(
-          height: 120,
+          height: MediaQuery.sizeOf(context).height < 520 ? 76 : 120,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(color: SuonaColors.paper, borderRadius: BorderRadius.circular(16)),
           child: StaffView(notes: [for (final n in fresh.take(8)) StaffNote(n)]),

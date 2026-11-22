@@ -498,13 +498,13 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
         body: AppBackground(
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(28, 20, 28, 24),
+              padding: context.screenPadding,
               child: Column(
                 children: [
                   _header(),
-                  if (widget.config.timeLimit != null) ...[const SizedBox(height: 10), _timeBar()],
-                  if (_adv != null) ...[const SizedBox(height: 10), _crowdAndPedals()],
-                  const SizedBox(height: 14),
+                  if (widget.config.timeLimit != null) ...[SizedBox(height: context.compact ? 6 : 10), _timeBar()],
+                  if (_adv != null) ...[SizedBox(height: context.compact ? 6 : 10), _crowdAndPedals()],
+                  SizedBox(height: context.compact ? 8 : 14),
                   Expanded(child: LayoutBuilder(builder: (context, c) => _body(c))),
                 ],
               ),
@@ -517,6 +517,7 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
 
   /// Aufbau je nach Frageart.
   Widget _body(BoxConstraints c) {
+    if (context.compact && c.maxWidth >= 600) return _sideBySide(c);
     final fretHeight = (c.maxHeight * 0.38).clamp(190.0, 320.0);
     switch (_q.type) {
       case QuestionType.nameFromStaff:
@@ -562,6 +563,66 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
     }
   }
 
+  /// Handy quer: Frage links, Antwort rechts (oder Griffbrett über die
+  /// ganze Höhe), damit die Bünde und Knöpfe gross genug bleiben.
+  Widget _sideBySide(BoxConstraints c) {
+    final side = min(340.0, c.maxWidth * 0.4);
+    switch (_q.type) {
+      case QuestionType.nameFromStaff:
+        return Row(
+          children: [
+            Expanded(child: _withFeedback(_staffCard(maxWidth: 980, aspect: 1.6))),
+            const SizedBox(width: 14),
+            SizedBox(
+              width: side,
+              child: Center(child: _playMode ? _listenPanel(compact: true) : _letterPad(side: true)),
+            ),
+          ],
+        );
+      case QuestionType.fretFromStaff:
+        return Row(
+          children: [
+            SizedBox(width: min(260.0, c.maxWidth * 0.3), child: _withFeedback(_staffCard(maxWidth: 260, aspect: 1.15))),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                children: [
+                  if (_playMode) ...[_listenPanel(compact: true), const SizedBox(height: 6)],
+                  if (_q.onString != null) _stringHint(),
+                  Expanded(child: _fretboardCard(answer: true)),
+                ],
+              ),
+            ),
+          ],
+        );
+      case QuestionType.nameFromFret:
+        return Row(
+          children: [
+            Expanded(child: _withFeedback(_fretboardCard())),
+            const SizedBox(width: 14),
+            SizedBox(width: side, child: Center(child: _letterPad(side: true))),
+          ],
+        );
+      case QuestionType.staffFromFret:
+        return Row(
+          children: [
+            Expanded(child: _fretboardCard()),
+            const SizedBox(width: 12),
+            SizedBox(
+              width: side,
+              child: Column(
+                children: [
+                  Expanded(child: _withFeedback(_staffInputCard())),
+                  const SizedBox(height: 8),
+                  _staffInputControls(),
+                ],
+              ),
+            ),
+          ],
+        );
+    }
+  }
+
   /// Rückmeldung oben rechts über dem Inhalt.
   Widget _withFeedback(Widget child) {
     return Stack(
@@ -569,7 +630,8 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
       alignment: Alignment.center,
       children: [
         child,
-        if (_phase != _Phase.asking) Positioned(top: -18, right: 18, child: _feedback()),
+        if (_phase != _Phase.asking)
+          Positioned(top: context.compact ? -8 : -18, right: context.compact ? 8 : 18, child: _feedback()),
       ],
     );
   }
@@ -764,6 +826,7 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
   }
 
   Widget _header() {
+    final small = context.compact || context.narrow;
     return Row(
       children: [
         RoundIconButton(
@@ -771,13 +834,13 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
           tooltip: tr('Beenden', 'Quit'),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        const SizedBox(width: 14),
+        SizedBox(width: small ? 10 : 14),
         Expanded(child: _arcade ? _livesRow() : _progressDots()),
-        const SizedBox(width: 12),
-        if (_combo.multiplier > 1) ...[ComboBadge(_combo.multiplier), const SizedBox(width: 12)],
-        _PlayToggle(on: _playMode, onTap: () => _setPlayMode(!_playMode)),
-        const SizedBox(width: 12),
-        InfoPill(child: CoinCount(_coins, size: 21)),
+        SizedBox(width: small ? 8 : 12),
+        if (_combo.multiplier > 1) ...[ComboBadge(_combo.multiplier), SizedBox(width: small ? 8 : 12)],
+        _PlayToggle(on: _playMode, onTap: () => _setPlayMode(!_playMode), iconOnly: small),
+        SizedBox(width: small ? 8 : 12),
+        InfoPill(child: CoinCount(_coins, size: small ? 18 : 21)),
       ],
     );
   }
@@ -873,7 +936,8 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _progressDots() => ProgressDots(total: widget.config.length, results: _results);
+  Widget _progressDots() =>
+      ProgressDots(total: widget.config.length, results: _results, size: context.compact || context.narrow ? 14 : 22);
 
   Widget _livesRow() {
     return Row(
@@ -934,19 +998,27 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _letterPad() {
+  /// Notenknöpfe. Wenig Platz (Handy, Seitenleiste): 4 + 3 in zwei Reihen.
+  Widget _letterPad({bool side = false}) {
     final enharmonic = _q.type == QuestionType.nameFromFret;
+    final small = context.compact;
     return LayoutBuilder(
       builder: (context, c) {
-        final size = min(104.0, (c.maxWidth - 6 * 12) / 7);
+        final gap = small ? 8.0 : 12.0;
+        final twoRows = side || c.maxWidth < 520;
+        final perRow = twoRows ? 4 : 7;
+        final size = min(twoRows ? 80.0 : 104.0, (c.maxWidth - (perRow - 1) * gap) / perRow);
         return Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: gap,
+              runSpacing: gap,
               children: [
                 for (final l in Letter.values)
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    padding: EdgeInsets.zero,
                     child: AnswerButton(
                       label: letterLabel(l, _naming),
                       width: size,
@@ -961,7 +1033,7 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
               ],
             ),
             if (_hasAccidentals) ...[
-              const SizedBox(height: 10),
+              SizedBox(height: gap),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -972,7 +1044,7 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
                         accidental: a,
                         // Nach einem Fehler zeigt Gelb das richtige Vorzeichen.
                         selected: _modifier == a || (_phase == _Phase.wrong && _note.accidental == a),
-                        height: size * 0.72,
+                        height: twoRows ? size * 0.66 : size * 0.72,
                         onTap: _phase == _Phase.asking
                             ? () => setState(() => _modifier = _modifier == a ? Accidental.natural : a)
                             : null,
@@ -1100,16 +1172,19 @@ class PedalButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(999),
             onTap: enabled ? onTap : null,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              padding: EdgeInsets.symmetric(horizontal: context.compact ? 10 : 14, vertical: context.compact ? 6 : 9),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(icon, size: 24, color: lit ? Colors.white : SuonaColors.muted),
-                  const SizedBox(width: 6),
-                  Text(
-                    item?.name ?? id,
-                    style: display(15, color: lit ? Colors.white : SuonaColors.muted),
-                  ),
+                  Icon(icon, size: context.compact ? 20 : 24, color: lit ? Colors.white : SuonaColors.muted),
+                  // Handy: nur das Symbol, der Name steht im Hinweis.
+                  if (!context.compact) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      item?.name ?? id,
+                      style: display(15, color: lit ? Colors.white : SuonaColors.muted),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -1122,9 +1197,12 @@ class PedalButton extends StatelessWidget {
 
 /// Schalter oben: mit der Gitarre antworten (Mikrofon) oder antippen.
 class _PlayToggle extends StatelessWidget {
-  const _PlayToggle({required this.on, required this.onTap});
+  const _PlayToggle({required this.on, required this.onTap, this.iconOnly = false});
   final bool on;
   final VoidCallback onTap;
+
+  /// Wenig Platz: nur das Mikrofon (rot, wenn an).
+  final bool iconOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -1145,8 +1223,10 @@ class _PlayToggle extends StatelessWidget {
                 color: on ? SuonaColors.wrong : SuonaColors.ink,
                 size: 24,
               ),
-              const SizedBox(width: 8),
-              Text(tr('Gitarre', 'Guitar'), style: body(16, weight: FontWeight.w600)),
+              if (!iconOnly) ...[
+                const SizedBox(width: 8),
+                Text(tr('Gitarre', 'Guitar'), style: body(16, weight: FontWeight.w600)),
+              ],
               if (on) ...[
                 const SizedBox(width: 8),
                 Container(

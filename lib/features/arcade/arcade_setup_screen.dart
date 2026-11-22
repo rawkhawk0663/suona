@@ -117,13 +117,25 @@ class _ArcadeSetupScreenState extends State<ArcadeSetupScreen> {
             children: [
               Center(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(28, 20, 28, 60),
+                  padding: context.compact ? const EdgeInsets.fromLTRB(16, 10, 16, 24) : const EdgeInsets.fromLTRB(28, 20, 28, 60),
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 820),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        ScreenHeader(title: 'Arcade', subtitle: tr('Endlos spielen, bis 3 Fehler', 'Endless play until 3 mistakes')),
+                        ScreenHeader(
+                          title: 'Arcade',
+                          subtitle: tr('Endlos spielen, bis 3 Fehler', 'Endless play until 3 mistakes'),
+                          // Handy quer: „Los!“ immer sichtbar oben rechts.
+                          trailing: [
+                            if (context.compact)
+                              GradientButton(
+                                label: tr('Los!', 'Go!'),
+                                icon: Icons.play_arrow_rounded,
+                                onPressed: pool.isEmpty ? null : () => _start(state, profile, pool),
+                              ),
+                          ],
+                        ),
                         const SizedBox(height: 18),
                         Text(
                           record > 0
@@ -153,6 +165,7 @@ class _ArcadeSetupScreenState extends State<ArcadeSetupScreen> {
                         const SizedBox(height: 8),
                         _speeds(),
                         const SizedBox(height: 28),
+                        if (!context.compact)
                         Center(
                           child: GradientButton(
                             label: tr('Los!', 'Go!'),

@@ -35,7 +35,7 @@ class AdventureMapScreen extends StatelessWidget {
       body: AppBackground(
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(28, 20, 28, 24),
+            padding: context.screenPadding,
             child: Column(
               children: [
                 ScreenHeader(
@@ -126,7 +126,7 @@ class _MapView extends StatelessWidget {
   /// Lage der Stationen: zickzack von links unten nach rechts oben.
   List<Offset> _points() {
     final w = size.width, h = size.height;
-    final node = min(110.0, w / 9);
+    final node = min(min(110.0, w / 9), h / 3.6);
     return [
       for (var i = 0; i < Adventure.stationCount; i++)
         Offset(
@@ -139,7 +139,7 @@ class _MapView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pts = _points();
-    final node = min(110.0, size.width / 9);
+    final node = min(min(110.0, size.width / 9), size.height / 3.6);
     return Stack(
       clipBehavior: Clip.none,
       children: [

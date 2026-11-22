@@ -21,31 +21,10 @@ class StartScreen extends StatelessWidget {
         child: SafeArea(
           child: Stack(
             children: [
-              Positioned(
-                top: 12,
-                right: 12,
-                child: RoundIconButton(
-                  icon: Icons.lock_rounded,
-                  tooltip: tr('Lehrerbereich', 'Teacher area'),
-                  onPressed: () => openTeacherArea(context),
-                ),
-              ),
-              Center(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(24, 70, 24, 90),
-                  child: Column(
-                    children: [
-                      const SuonaLogo(size: 96, glow: true),
-                      const SizedBox(height: 18),
-                      Text('Suona', style: display(60)),
-                      const SizedBox(height: 4),
-                      Text(tr('Wer spielt?', 'Who’s playing?'), style: body(22, color: SuonaColors.muted)),
-                      const SizedBox(height: 32),
-                      Wrap(
-                        spacing: 18,
-                        runSpacing: 18,
-                        alignment: WrapAlignment.center,
-                        children: [
+              LayoutBuilder(
+                builder: (context, box) {
+                  final small = context.compact;
+                  final cards = <Widget>[
                           for (final p in state.profiles)
                             _ProfileCard(
                               profile: p,
@@ -63,10 +42,59 @@ class StartScreen extends StatelessWidget {
                               }
                             },
                           ),
+                  ];
+                  final title = Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SuonaLogo(size: small ? 64 : 96, glow: true),
+                      SizedBox(height: small ? 10 : 18),
+                      Text('Suona', style: display(small ? 36 : 60)),
+                      const SizedBox(height: 4),
+                      Text(tr('Wer spielt?', 'Who’s playing?'), style: body(small ? 17 : 22, color: SuonaColors.muted)),
+                    ],
+                  );
+                  if (small && box.maxWidth > box.maxHeight) {
+                    // Handy quer: Titel links, Profile rechts zum Wischen.
+                    return Row(
+                      children: [
+                        SizedBox(width: box.maxWidth * 0.3, child: title),
+                        Expanded(
+                          child: Center(
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              padding: const EdgeInsets.fromLTRB(8, 16, 72, 16),
+                              child: Row(
+                                children: [
+                                  for (final c in cards) Padding(padding: const EdgeInsets.only(right: 14), child: c),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+                  return Center(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(24, 70, 24, 90),
+                      child: Column(
+                        children: [
+                          title,
+                          const SizedBox(height: 32),
+                          Wrap(spacing: 18, runSpacing: 18, alignment: WrapAlignment.center, children: cards),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                  );
+                },
+              ),
+              Positioned(
+                top: 12,
+                right: 12,
+                child: RoundIconButton(
+                  icon: Icons.lock_rounded,
+                  tooltip: tr('Lehrerbereich', 'Teacher area'),
+                  onPressed: () => openTeacherArea(context),
                 ),
               ),
             ],
@@ -84,17 +112,19 @@ class _ProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final small = context.compact;
     return SizedBox(
-      width: 176,
+      width: small ? 150 : 176,
       child: SuonaCard(
         onTap: onTap,
         radius: 24,
         gradient: characterGlow(strength: 0.8),
-        padding: const EdgeInsets.fromLTRB(12, 20, 12, 16),
+        padding: EdgeInsets.fromLTRB(12, small ? 14 : 20, 12, small ? 12 : 16),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            FaceBadge(profile.look, size: 104),
-            const SizedBox(height: 12),
+            FaceBadge(profile.look, size: small ? 84 : 104),
+            SizedBox(height: small ? 8 : 12),
             Text(profile.nickname, style: display(22), overflow: TextOverflow.ellipsis),
             const SizedBox(height: 6),
             CoinCount(profile.coins, size: 18),
@@ -111,9 +141,10 @@ class _NewProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final small = context.compact;
     return SizedBox(
-      width: 176,
-      height: 212,
+      width: small ? 150 : 176,
+      height: small ? 176 : 212,
       child: SuonaCard(
         onTap: onTap,
         radius: 24,
@@ -123,7 +154,7 @@ class _NewProfileCard extends StatelessWidget {
           children: [
             GradientIcon(Icons.add_rounded, colors: SuonaColors.brand, size: 64, circle: true),
             const SizedBox(height: 14),
-            Text(tr('Neues Profil', 'New profile'), style: display(19)),
+            Text(tr('Neues Profil', 'New profile'), textAlign: TextAlign.center, style: display(19)),
           ],
         ),
       ),

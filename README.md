@@ -33,7 +33,7 @@ Für die Installation brauchst du keine Administrator-Rechte. Deinstallieren geh
 
 **Ohne Installation:** Lade stattdessen `Suona-Windows.zip` herunter, entpacke die Datei in einen Ordner und starte `Suona.exe`.
 
-**Android (Testversion):** Lade `Suona-Android.apk` auf dem Tablet herunter und öffne die Datei. Android fragt eventuell, ob der Browser Apps installieren darf. Das musst du einmal erlauben.
+**Android (Testversion):** Lade `Suona-Android.apk` auf dem Tablet oder Handy herunter und öffne die Datei. Android fragt eventuell, ob der Browser Apps installieren darf. Das musst du einmal erlauben. Auf dem Handy dreht sich Suona von selbst ins Querformat, damit das Griffbrett und die Knöpfe gross genug sind.
 
 **Updates:** Suona sucht nie von selbst im Internet. Im Lehrerbereich unter *Über Suona* → *Nach Updates suchen* installierst du eine neue Version mit einem Tippen, und Suona startet danach neu. Die Spielstände bleiben erhalten.
 

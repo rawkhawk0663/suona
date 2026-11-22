@@ -36,9 +36,12 @@ class HomeScreen extends StatelessWidget {
     final practicedToday = profile.streak.practicedOn(now);
 
     void open(Widget page) => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));
+    // Handy quer: wenig Höhe, Kacheln mit Symbol links.
+    final small = context.compact;
 
     final tiles = [
       MenuTile(
+        compact: small,
         title: tr('Noten lesen', 'Read notes'),
         subtitle: tr('Wie heisst die Note?', 'Name that note'),
         icon: Icons.music_note_rounded,
@@ -46,6 +49,7 @@ class HomeScreen extends StatelessWidget {
         onTap: () => open(QuizScreen(profileId: profile.id, config: QuizConfig.practice())),
       ),
       MenuTile(
+        compact: small,
         title: tr('Griffbrett', 'Fretboard'),
         subtitle: tr('Wo liegt die Note?', 'Where is the note?'),
         icon: Icons.grid_on_rounded,
@@ -53,6 +57,7 @@ class HomeScreen extends StatelessWidget {
         onTap: () => open(QuizScreen(profileId: profile.id, config: QuizConfig.fretboardPractice())),
       ),
       MenuTile(
+        compact: small,
         title: tr('Akkorde', 'Chords'),
         subtitle: tr('Griffe und Akkord-Tour', 'Shapes and chord tour'),
         icon: Icons.library_music_rounded,
@@ -60,6 +65,7 @@ class HomeScreen extends StatelessWidget {
         onTap: () => open(ChordsScreen(profileId: profile.id)),
       ),
       MenuTile(
+        compact: small,
         title: 'Arcade',
         subtitle: profile.arcadeBest > 0
             ? tr('Rekord ${profile.arcadeBest}', 'Best ${profile.arcadeBest}')
@@ -69,6 +75,7 @@ class HomeScreen extends StatelessWidget {
         onTap: () => open(ArcadeSetupScreen(profileId: profile.id)),
       ),
       MenuTile(
+        compact: small,
         title: tr('Abenteuer', 'Adventure'),
         subtitle: tr('Bis ins Stadion', 'To the stadium'),
         icon: Icons.map_rounded,
@@ -76,6 +83,7 @@ class HomeScreen extends StatelessWidget {
         onTap: () => open(AdventureMapScreen(profileId: profile.id)),
       ),
       MenuTile(
+        compact: small,
         title: 'Shop',
         subtitle: tr('Outfits, Gitarren, Amps', 'Outfits, guitars, amps'),
         icon: Icons.storefront_rounded,
@@ -88,7 +96,7 @@ class HomeScreen extends StatelessWidget {
     final hero = SuonaCard(
       radius: 24,
       gradient: characterGlow(),
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(small ? 10 : 20),
       child: Column(
         children: [
           _Bubble(
@@ -96,7 +104,7 @@ class HomeScreen extends StatelessWidget {
                 ? tr('Heute schon geübt. Stark!', 'Already practised today. Great!')
                 : tr('Bereit für die Bühne, ${profile.nickname}?', 'Ready for the stage, ${profile.nickname}?'),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: small ? 4 : 8),
           Expanded(
             child: GestureDetector(
               // Figur antippen: Aussehen ändern.
@@ -104,7 +112,36 @@ class HomeScreen extends StatelessWidget {
               child: CharacterView(profile.look),
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: small ? 4 : 10),
+          if (small)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                InfoPill(
+                  onTap: () => open(ShopScreen(profileId: profile.id)),
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Icon(Icons.palette_rounded, color: SuonaColors.ink, size: 22),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                InfoPill(
+                  onTap: () => showBadges(context, profile),
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.military_tech_rounded, color: SuonaColors.ink, size: 22),
+                        const SizedBox(width: 4),
+                        Text('$earned', style: body(15, weight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            )
+          else
           Wrap(
             spacing: 10,
             runSpacing: 8,
@@ -132,14 +169,14 @@ class HomeScreen extends StatelessWidget {
       ),
     );
 
-    Widget grid(int columns) => LayoutBuilder(
+    Widget grid(int columns, {double height = 172}) => LayoutBuilder(
       builder: (context, c) {
-        const gap = 16.0;
+        final gap = small ? 10.0 : 16.0;
         final w = (c.maxWidth - gap * (columns - 1)) / columns;
         return Wrap(
           spacing: gap,
           runSpacing: gap,
-          children: [for (final t in tiles) SizedBox(width: w, height: 172, child: t)],
+          children: [for (final t in tiles) SizedBox(width: w, height: height, child: t)],
         );
       },
     );
@@ -147,7 +184,7 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
+          padding: context.screenPadding,
           child: Column(
             children: [
               _TopBar(
@@ -155,10 +192,34 @@ class HomeScreen extends StatelessWidget {
                 subtitle:
                     '${curriculum.name} · ${tr('Schritt', 'Step')} ${step + 1}/${curriculum.steps.length}: ${curriculum.steps[step].title}',
               ),
-              const SizedBox(height: 18),
+              SizedBox(height: small ? 10 : 18),
               Expanded(
                 child: LayoutBuilder(
                   builder: (context, c) {
+                    if (small && c.maxWidth >= 600) {
+                      // Handy quer: Figur links, rechts alles zum Scrollen.
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          SizedBox(width: (c.maxWidth * 0.27).clamp(180.0, 280.0), child: hero),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: SingleChildScrollView(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  _AdventureCard(profile: profile),
+                                  const SizedBox(height: 10),
+                                  grid(c.maxWidth >= 760 ? 3 : 2, height: 70),
+                                  const SizedBox(height: 10),
+                                  _WeekCard(profile: profile),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    }
                     if (c.maxWidth >= 900 && c.maxHeight >= 640) {
                       return Center(
                         child: ConstrainedBox(
@@ -189,11 +250,11 @@ class HomeScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          SizedBox(height: 360, child: hero),
+                          SizedBox(height: c.maxWidth < 600 ? 320 : 360, child: hero),
                           const SizedBox(height: 16),
                           _AdventureCard(profile: profile),
                           const SizedBox(height: 16),
-                          grid(c.maxWidth >= 560 ? 3 : 2),
+                          grid(c.maxWidth >= 560 ? 3 : 2, height: c.maxWidth < 600 ? 150 : 172),
                           const SizedBox(height: 16),
                           _WeekCard(profile: profile),
                         ],
@@ -219,20 +280,29 @@ class _TopBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final now = DateTime.now();
     final days = profile.streak.currentDays(now);
+    final small = context.compact;
+    // Wenig Breite: Name und „Tage“ weglassen, nur Gesicht und Zahl.
+    final tight = context.screenSize.width < 760;
+    final pill = small ? 18.0 : 21.0;
     return Row(
       children: [
-        const SuonaLogo(size: 46, glow: true),
-        const SizedBox(width: 14),
+        SuonaLogo(size: small ? 36 : 46, glow: true),
+        SizedBox(width: small ? 10 : 14),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Suona', style: display(26)),
-              Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: body(14, color: SuonaColors.muted)),
+              Text('Suona', style: display(small ? 20 : 26)),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: body(small ? 12 : 14, color: SuonaColors.muted),
+              ),
             ],
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         // Profil: antippen führt zurück zur Auswahl.
         Tooltip(
           message: tr('Anderes Profil', 'Switch profile'),
@@ -241,35 +311,37 @@ class _TopBar extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                FaceBadge(profile.look, size: 36),
-                const SizedBox(width: 10),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 160),
-                  child: Text(
-                    profile.nickname,
-                    overflow: TextOverflow.ellipsis,
-                    style: body(16, weight: FontWeight.w600),
+                FaceBadge(profile.look, size: small ? 30 : 36),
+                if (!tight) ...[
+                  const SizedBox(width: 10),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 160),
+                    child: Text(
+                      profile.nickname,
+                      overflow: TextOverflow.ellipsis,
+                      style: body(16, weight: FontWeight.w600),
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 8),
         Tooltip(
           message: tr('Tage in Folge geübt', 'Days in a row'),
           child: InfoPill(
             child: StreakCount(
               days,
-              size: 21,
+              size: pill,
               active: profile.streak.practicedOn(now),
-              shields: profile.streak.shields,
-              label: tr(days == 1 ? '1 Tag' : '$days Tage', days == 1 ? '1 day' : '$days days'),
+              shields: tight ? 0 : profile.streak.shields,
+              label: tight ? null : tr(days == 1 ? '1 Tag' : '$days Tage', days == 1 ? '1 day' : '$days days'),
             ),
           ),
         ),
-        const SizedBox(width: 10),
-        InfoPill(child: CoinCount(profile.coins, size: 21)),
+        const SizedBox(width: 8),
+        InfoPill(child: CoinCount(profile.coins, size: pill)),
       ],
     );
   }
@@ -283,6 +355,7 @@ class _AdventureCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = SuonaScope.of(context);
+    final small = context.compact || context.narrow;
     const tour = NoteTour();
     final next = nextStop(tour, state, profile);
     final info = next.done ? null : tour.levelInfo(state, profile, next.station, next.level);
@@ -312,7 +385,7 @@ class _AdventureCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(24),
           onTap: openMap,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(28, 24, 24, 24),
+            padding: small ? const EdgeInsets.fromLTRB(18, 12, 14, 12) : const EdgeInsets.fromLTRB(28, 24, 24, 24),
             child: Row(
               children: [
                 Expanded(
@@ -321,22 +394,32 @@ class _AdventureCard extends StatelessWidget {
                     children: [
                       Text(
                         tr('Weiter im Abenteuer', 'Continue the adventure'),
-                        style: body(15, color: Colors.white.withValues(alpha: 0.9), weight: FontWeight.w600),
+                        style: body(small ? 13 : 15, color: Colors.white.withValues(alpha: 0.9), weight: FontWeight.w600),
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: small ? 2 : 4),
                       FittedBox(
                         fit: BoxFit.scaleDown,
                         alignment: Alignment.centerLeft,
-                        child: Text(title, maxLines: 1, style: display(34, color: Colors.white)),
+                        child: Text(title, maxLines: 1, style: display(small ? 22 : 34, color: Colors.white)),
                       ),
-                      const SizedBox(height: 4),
-                      Text(line, style: body(16, color: Colors.white.withValues(alpha: 0.9))),
+                      SizedBox(height: small ? 2 : 4),
+                      Text(
+                        line,
+                        maxLines: small ? 1 : 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: body(small ? 13 : 16, color: Colors.white.withValues(alpha: 0.9)),
+                      ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 16),
-                if (!next.done) _Ring(value: next.level / tour.levelsPerStation, label: '${next.level}/${tour.levelsPerStation}'),
-                const SizedBox(width: 16),
+                SizedBox(width: small ? 10 : 16),
+                if (!next.done && context.screenSize.width >= 560)
+                  _Ring(
+                    value: next.level / tour.levelsPerStation,
+                    label: '${next.level}/${tour.levelsPerStation}',
+                    size: small ? 58 : 92,
+                  ),
+                SizedBox(width: small ? 10 : 16),
                 Material(
                   color: Colors.white,
                   shape: const StadiumBorder(),
@@ -346,7 +429,7 @@ class _AdventureCard extends StatelessWidget {
                         ? openMap
                         : () => tour.startLevel(context, state, profile, next.station, next.level),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+                      padding: EdgeInsets.symmetric(horizontal: small ? 16 : 22, vertical: small ? 10 : 14),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -357,7 +440,7 @@ class _AdventureCard extends StatelessWidget {
                           const SizedBox(width: 6),
                           Text(
                             next.done || next.waiting ? tr('Zur Karte', 'Map') : tr('Weiter', 'Go'),
-                            style: display(17, color: const Color(0xFF2A0F66)),
+                            style: display(small ? 15 : 17, color: const Color(0xFF2A0F66)),
                           ),
                         ],
                       ),
@@ -375,31 +458,32 @@ class _AdventureCard extends StatelessWidget {
 
 /// Fortschrittsring: geschaffte Level der Station.
 class _Ring extends StatelessWidget {
-  const _Ring({required this.value, required this.label});
+  const _Ring({required this.value, required this.label, this.size = 92});
   final double value;
   final String label;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 92,
-      height: 92,
+      width: size,
+      height: size,
       child: Stack(
         fit: StackFit.expand,
         children: [
           CircularProgressIndicator(
             value: 1,
-            strokeWidth: 9,
+            strokeWidth: size / 10,
             color: Colors.white.withValues(alpha: 0.28),
           ),
           CircularProgressIndicator(
             value: value,
-            strokeWidth: 9,
+            strokeWidth: size / 10,
             strokeCap: StrokeCap.round,
             color: Colors.white,
             backgroundColor: Colors.transparent,
           ),
-          Center(child: Text(label, style: display(22, color: Colors.white))),
+          Center(child: Text(label, style: display(size * 0.24, color: Colors.white))),
         ],
       ),
     );
@@ -428,12 +512,13 @@ class _WeekCard extends StatelessWidget {
 
     final names = L10n.isEnglish ? ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'] : ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
     final practicedToday = streak.practicedOn(now);
+    final small = context.compact;
     final todayInfo = Row(
       children: [
         practicedToday
-            ? GradientIcon(Icons.check_rounded, colors: SuonaColors.mint, size: 52, circle: true)
-            : GradientIcon(Icons.music_note_rounded, colors: SuonaColors.brand, size: 52, circle: true),
-        const SizedBox(width: 16),
+            ? GradientIcon(Icons.check_rounded, colors: SuonaColors.mint, size: small ? 40 : 52, circle: true)
+            : GradientIcon(Icons.music_note_rounded, colors: SuonaColors.brand, size: small ? 40 : 52, circle: true),
+        SizedBox(width: small ? 12 : 16),
         Flexible(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -470,7 +555,7 @@ class _WeekCard extends StatelessWidget {
       ],
     );
     return SuonaCard(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+      padding: small ? const EdgeInsets.symmetric(horizontal: 16, vertical: 12) : const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
       child: LayoutBuilder(
         builder: (context, c) => c.maxWidth >= 680
             ? Row(children: [Expanded(child: todayInfo), const SizedBox(width: 24), week])
@@ -516,14 +601,15 @@ class _Bubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final small = context.compact;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: small ? const EdgeInsets.symmetric(horizontal: 12, vertical: 6) : const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
         color: SuonaColors.cardHigh,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: SuonaColors.line),
       ),
-      child: Text(text, textAlign: TextAlign.center, style: display(19)),
+      child: Text(text, textAlign: TextAlign.center, style: display(small ? 14 : 19)),
     );
   }
 }

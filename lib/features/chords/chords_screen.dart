@@ -78,7 +78,11 @@ class ChordsScreen extends StatelessWidget {
                     spacing: 10,
                     runSpacing: 10,
                     children: [
-                      for (final c in pool) SizedBox(height: 210, child: ChordPreview(chord: c, strings: strings, width: 270)),
+                      for (final c in pool)
+                        SizedBox(
+                          height: context.compact ? 150 : 210,
+                          child: ChordPreview(chord: c, strings: strings, width: context.compact ? 200 : 270),
+                        ),
                     ],
                   ),
                 ),
@@ -89,7 +93,7 @@ class ChordsScreen extends StatelessWidget {
       body: AppBackground(
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(28, 20, 28, 24),
+            padding: context.screenPadding,
             child: Column(
               children: [
                 ScreenHeader(
@@ -97,17 +101,17 @@ class ChordsScreen extends StatelessWidget {
                   subtitle: tr('Griffe, Akkord-Tour und Arcade', 'Shapes, chord tour and arcade'),
                   trailing: [InfoPill(child: CoinCount(p.coins, size: 21))],
                 ),
-                const SizedBox(height: 22),
+                SizedBox(height: context.compact ? 10 : 22),
                 Expanded(
                   child: LayoutBuilder(
                     builder: (context, c) {
-                      if (c.maxWidth >= 820) {
+                      if (c.maxWidth >= 820 || (context.compact && c.maxWidth >= 600)) {
                         return Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(child: known),
                             const SizedBox(width: 28),
-                            SizedBox(width: 420, child: tiles),
+                            SizedBox(width: context.compact ? 300 : 420, child: tiles),
                           ],
                         );
                       }

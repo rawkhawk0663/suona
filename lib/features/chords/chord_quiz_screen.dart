@@ -379,14 +379,14 @@ class _ChordQuizScreenState extends State<ChordQuizScreen> with SingleTickerProv
       body: AppBackground(
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(28, 20, 28, 24),
+            padding: context.screenPadding,
             child: Column(
               children: [
                 _header(),
-                if (_cfg.timeLimit != null) ...[const SizedBox(height: 10), _timeBar()],
-                if (_adv != null) ...[const SizedBox(height: 10), _crowdAndPedals()],
-                if (_song != null) ...[const SizedBox(height: 10), _songSheet()],
-                const SizedBox(height: 12),
+                if (_cfg.timeLimit != null) ...[SizedBox(height: context.compact ? 6 : 10), _timeBar()],
+                if (_adv != null) ...[SizedBox(height: context.compact ? 6 : 10), _crowdAndPedals()],
+                if (_song != null) ...[SizedBox(height: context.compact ? 6 : 10), _songSheet()],
+                SizedBox(height: context.compact ? 8 : 12),
                 Expanded(child: LayoutBuilder(builder: (context, c) => _body(c))),
               ],
             ),
@@ -397,6 +397,25 @@ class _ChordQuizScreenState extends State<ChordQuizScreen> with SingleTickerProv
   }
 
   Widget _body(BoxConstraints c) {
+    if (context.compact && c.maxWidth >= 600) {
+      // Handy quer: Griffbild bzw. Noten links, Antwort rechts.
+      final side = min(330.0, c.maxWidth * 0.38);
+      final left = _task == ChordTask.staff ? _withFeedback(_staffCard()) : _withFeedback(_boardCard());
+      final right = switch (_task) {
+        ChordTask.build => Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [_buildPrompt(), const SizedBox(height: 12), _buildControls(stacked: true)],
+        ),
+        _ => Center(child: SingleChildScrollView(child: _namePad())),
+      };
+      return Row(
+        children: [
+          Expanded(child: left),
+          const SizedBox(width: 14),
+          SizedBox(width: side, child: right),
+        ],
+      );
+    }
     final boardHeight = (c.maxHeight * 0.55).clamp(200.0, 380.0);
     switch (_task) {
       case ChordTask.name:
@@ -433,7 +452,8 @@ class _ChordQuizScreenState extends State<ChordQuizScreen> with SingleTickerProv
     alignment: Alignment.center,
     children: [
       child,
-      if (_phase != _Phase.asking) Positioned(top: -14, right: 18, child: _feedback()),
+      if (_phase != _Phase.asking)
+        Positioned(top: context.compact ? -8 : -14, right: context.compact ? 8 : 18, child: _feedback()),
     ],
   );
 
@@ -532,31 +552,35 @@ class _ChordQuizScreenState extends State<ChordQuizScreen> with SingleTickerProv
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(tr('Baue', 'Build'), style: display(26, color: SuonaColors.muted, weight: FontWeight.w600)),
+        Text(tr('Baue', 'Build'), style: display(context.compact ? 20 : 26, color: SuonaColors.muted, weight: FontWeight.w600)),
         const SizedBox(width: 14),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+          padding: EdgeInsets.symmetric(horizontal: context.compact ? 16 : 24, vertical: 4),
           decoration: BoxDecoration(
             gradient: gradientOf(SuonaColors.brand, horizontal: true),
             borderRadius: BorderRadius.circular(20),
             boxShadow: glowOf(SuonaColors.brand, strength: 0.3),
           ),
-          child: Text(chordName(_chord, _naming), style: display(40, color: Colors.white)),
+          child: Text(chordName(_chord, _naming), style: display(context.compact ? 30 : 40, color: Colors.white)),
         ),
       ],
     );
   }
 
-  Widget _buildControls() {
+  Widget _buildControls({bool stacked = false}) {
     final hint = _strings >= 4
         ? tr('Tippe die Punkte. Links: „x“ = nicht spielen.', 'Tap the dots. On the left: “x” = don’t play.')
         : tr('Tippe die Punkte, dann „Fertig“.', 'Tap the dots, then “Done”.');
     return Column(
       children: [
-        Text(hint, style: body(15, color: SuonaColors.muted)),
+        Text(hint, textAlign: TextAlign.center, style: body(context.compact ? 13 : 15, color: SuonaColors.muted)),
         const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        Wrap(
+          alignment: WrapAlignment.center,
+          spacing: 12,
+          runSpacing: 10,
+          direction: stacked ? Axis.vertical : Axis.horizontal,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             GradientButton(
               label: tr('Leeren', 'Clear'),
@@ -571,7 +595,6 @@ class _ChordQuizScreenState extends State<ChordQuizScreen> with SingleTickerProv
                     })
                   : null,
             ),
-            const SizedBox(width: 16),
             GradientButton(
               label: tr('Fertig', 'Done'),
               icon: Icons.check_rounded,
@@ -588,8 +611,8 @@ class _ChordQuizScreenState extends State<ChordQuizScreen> with SingleTickerProv
   Widget _namePad() {
     return LayoutBuilder(
       builder: (context, c) {
-        final perRow = min(_options.length, 7);
-        final size = min(110.0, (c.maxWidth - (perRow - 1) * 10) / perRow);
+        final perRow = context.compact ? min(_options.length, 3) : min(_options.length, 7);
+        final size = min(context.compact ? 96.0 : 110.0, (c.maxWidth - (perRow - 1) * 10) / perRow);
         return Wrap(
           spacing: 10,
           runSpacing: 10,
@@ -634,6 +657,42 @@ class _ChordQuizScreenState extends State<ChordQuizScreen> with SingleTickerProv
   /// Das Liedblatt beim Auftritt: alle Takte, der aktuelle leuchtet.
   Widget _songSheet() {
     final song = _song!;
+    final small = context.compact;
+    final bars = [
+      for (var i = 0; i < song.bars.length; i++)
+        Container(
+          width: small ? 54 : 66,
+          height: small ? 34 : 42,
+          margin: const EdgeInsets.only(right: 6),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            gradient: i == _results.length ? gradientOf(SuonaColors.brand) : null,
+            color: i < _results.length
+                ? (_results[i] ? SuonaColors.ok.withValues(alpha: 0.22) : SuonaColors.wrong.withValues(alpha: 0.25))
+                : (i == _results.length ? null : SuonaColors.cardHigh),
+          ),
+          child: Text(
+            chordName(song.bars[i], _naming),
+            style: display(small ? 15 : 19, color: i == _results.length ? Colors.white : SuonaColors.ink),
+          ),
+        ),
+    ];
+    if (small) {
+      // Handy quer: eine Zeile zum Wischen, der aktuelle Takt bleibt sichtbar.
+      return SizedBox(
+        height: 34,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          controller: ScrollController(initialScrollOffset: max(0, (_results.length - 3) * 60.0)),
+          children: [
+            Center(child: Icon(Icons.queue_music_rounded, color: SuonaColors.accent)),
+            const SizedBox(width: 8),
+            ...bars,
+          ],
+        ),
+      );
+    }
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
       decoration: BoxDecoration(
@@ -652,30 +711,7 @@ class _ChordQuizScreenState extends State<ChordQuizScreen> with SingleTickerProv
             ],
           ),
           const SizedBox(height: 6),
-          Wrap(
-            spacing: 0,
-            runSpacing: 6,
-            children: [
-              for (var i = 0; i < song.bars.length; i++)
-                Container(
-                  width: 66,
-                  height: 42,
-                  margin: const EdgeInsets.only(right: 6),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    gradient: i == _results.length ? gradientOf(SuonaColors.brand) : null,
-                    color: i < _results.length
-                        ? (_results[i] ? SuonaColors.ok.withValues(alpha: 0.22) : SuonaColors.wrong.withValues(alpha: 0.25))
-                        : (i == _results.length ? null : SuonaColors.cardHigh),
-                  ),
-                  child: Text(
-                    chordName(song.bars[i], _naming),
-                    style: display(19, color: i == _results.length ? Colors.white : SuonaColors.ink),
-                  ),
-                ),
-            ],
-          ),
+          Wrap(spacing: 0, runSpacing: 6, children: bars),
         ],
       ),
     );
@@ -692,18 +728,18 @@ class _ChordQuizScreenState extends State<ChordQuizScreen> with SingleTickerProv
         const SizedBox(width: 14),
         Expanded(child: _arcade ? _livesRow() : (_song != null ? _songTitle() : _progressDots())),
         const SizedBox(width: 12),
-        if (_combo.multiplier > 1) ...[ComboBadge(_combo.multiplier), const SizedBox(width: 12)],
-        InfoPill(child: CoinCount(_coins, size: 21)),
+        if (_combo.multiplier > 1) ...[ComboBadge(_combo.multiplier), const SizedBox(width: 10)],
+        InfoPill(child: CoinCount(_coins, size: context.compact ? 18 : 21)),
       ],
     );
   }
 
   Widget _songTitle() => Text(
     tr('Lied begleiten', 'Play along'),
-    style: display(24),
+    style: display(context.compact ? 18 : 24),
   );
 
-  Widget _progressDots() => ProgressDots(total: _total, results: _results);
+  Widget _progressDots() => ProgressDots(total: _total, results: _results, size: context.compact ? 14 : 22);
 
   Widget _livesRow() {
     return Row(

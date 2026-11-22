@@ -33,7 +33,7 @@ You don't need administrator rights to install it. Uninstall it like any other a
 
 **Without installing:** download `Suona-Windows.zip` instead, unzip it into a folder and run `Suona.exe`.
 
-**Android (test version):** download `Suona-Android.apk` on the tablet and open it. Android may ask whether your browser may install apps. You need to allow this once.
+**Android (test version):** download `Suona-Android.apk` on the tablet or phone and open it. Android may ask whether your browser may install apps. You need to allow this once. On a phone, Suona turns to landscape by itself so the fretboard and buttons stay big enough.
 
 **Updates:** Suona never goes online by itself. In the teacher area under *About Suona* → *Check for updates* you install a new version with one tap, and Suona restarts. Game progress is kept.
 

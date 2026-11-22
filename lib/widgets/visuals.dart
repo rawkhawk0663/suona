@@ -7,6 +7,23 @@ import '../app/theme.dart';
 import '../core/character/character_art.dart';
 import '../core/character/look.dart';
 
+/// Bildschirmgrösse: Auf dem Handy (quer) ist wenig Höhe da, dann wird
+/// alles kompakter angeordnet.
+extension ScreenFit on BuildContext {
+  Size get screenSize => MediaQuery.sizeOf(this);
+
+  /// Wenig Höhe (Handy quer, kleines Fenster).
+  bool get compact => MediaQuery.sizeOf(this).height < 520;
+
+  /// Schmal (Handy hochkant).
+  bool get narrow => MediaQuery.sizeOf(this).width < 600;
+
+  /// Rand der Bildschirme.
+  EdgeInsets get screenPadding => compact
+      ? const EdgeInsets.fromLTRB(16, 10, 16, 10)
+      : (narrow ? const EdgeInsets.fromLTRB(16, 14, 16, 16) : const EdgeInsets.fromLTRB(28, 20, 28, 24));
+}
+
 /// Hintergrund der Spielbildschirme: ruhige, dunkle (oder helle) Fläche.
 class AppBackground extends StatelessWidget {
   const AppBackground({super.key, required this.child});
@@ -136,6 +153,9 @@ class GradientButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final small = context.compact;
+    final height = small ? (this.height * 0.8).clamp(40.0, 52.0) : this.height;
+    final fontSize = small ? this.fontSize * 0.86 : this.fontSize;
     final enabled = onPressed != null;
     final colors = this.colors ?? SuonaColors.brand;
     final plain = secondary || !enabled;
@@ -180,15 +200,16 @@ class GradientButton extends StatelessWidget {
 
 /// Runder Knopf mit Symbol (Zurück, Schliessen …).
 class RoundIconButton extends StatelessWidget {
-  const RoundIconButton({super.key, required this.icon, required this.onPressed, this.tooltip, this.size = 52});
+  const RoundIconButton({super.key, required this.icon, required this.onPressed, this.tooltip, this.size});
 
   final IconData icon;
   final VoidCallback? onPressed;
   final String? tooltip;
-  final double size;
+  final double? size;
 
   @override
   Widget build(BuildContext context) {
+    final size = this.size ?? (context.compact ? 42.0 : 52.0);
     final button = Material(
       color: SuonaColors.card,
       shape: CircleBorder(side: BorderSide(color: SuonaColors.line)),
@@ -208,14 +229,15 @@ class RoundIconButton extends StatelessWidget {
 
 /// Pille mit feinem Rand (Münzen, Streak, Profil in der Kopfzeile).
 class InfoPill extends StatelessWidget {
-  const InfoPill({super.key, required this.child, this.onTap, this.height = 48, this.color});
+  const InfoPill({super.key, required this.child, this.onTap, this.height, this.color});
   final Widget child;
   final VoidCallback? onTap;
-  final double height;
+  final double? height;
   final Color? color;
 
   @override
   Widget build(BuildContext context) {
+    final height = this.height ?? (context.compact ? 40.0 : 48.0);
     return Material(
       color: color ?? SuonaColors.card,
       shape: StadiumBorder(side: BorderSide(color: SuonaColors.line)),
@@ -284,14 +306,16 @@ class MenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final small = context.compact || context.narrow;
+    final box = small ? 42.0 : 52.0;
     final iconBox = locked
         ? Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(color: SuonaColors.cardHigh, borderRadius: BorderRadius.circular(16)),
-            child: Icon(Icons.lock_rounded, color: SuonaColors.muted, size: 26),
+            width: box,
+            height: box,
+            decoration: BoxDecoration(color: SuonaColors.cardHigh, borderRadius: BorderRadius.circular(box * 0.31)),
+            child: Icon(Icons.lock_rounded, color: SuonaColors.muted, size: box / 2),
           )
-        : GradientIcon(icon, colors: colors);
+        : GradientIcon(icon, colors: colors, size: box);
     final text = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -302,22 +326,27 @@ class MenuTile extends StatelessWidget {
           child: Text(
             title,
             maxLines: 1,
-            style: display(22, color: locked ? SuonaColors.muted : SuonaColors.ink),
+            style: display(small ? 18 : 22, color: locked ? SuonaColors.muted : SuonaColors.ink),
           ),
         ),
         if (subtitle != null)
-          Text(subtitle!, maxLines: 2, overflow: TextOverflow.ellipsis, style: body(15, color: SuonaColors.muted)),
+          Text(
+            subtitle!,
+            maxLines: small ? 1 : 2,
+            overflow: TextOverflow.ellipsis,
+            style: body(small ? 13 : 15, color: SuonaColors.muted),
+          ),
       ],
     );
     return SuonaCard(
       onTap: locked ? null : onTap,
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(small ? 12 : 20),
       child: compact
-          ? Row(children: [iconBox, const SizedBox(width: 16), Expanded(child: text)])
+          ? Row(children: [iconBox, SizedBox(width: small ? 12 : 16), Expanded(child: text)])
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [iconBox, const SizedBox(height: 16), text],
+              children: [iconBox, SizedBox(height: small ? 8 : 16), text],
             ),
     );
   }
@@ -534,6 +563,7 @@ class ScreenHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final small = context.compact;
     return Row(
       children: [
         RoundIconButton(
@@ -541,7 +571,7 @@ class ScreenHeader extends StatelessWidget {
           tooltip: icon == Icons.close_rounded ? 'OK' : null,
           onPressed: onBack ?? () => Navigator.of(context).maybePop(),
         ),
-        const SizedBox(width: 16),
+        SizedBox(width: small ? 12 : 16),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -550,14 +580,14 @@ class ScreenHeader extends StatelessWidget {
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
-                child: Text(title, maxLines: 1, style: display(32)),
+                child: Text(title, maxLines: 1, style: display(small ? 22 : 32)),
               ),
-              if (subtitle != null)
+              if (subtitle != null && !small)
                 Text(subtitle!, maxLines: 1, overflow: TextOverflow.ellipsis, style: body(15, color: SuonaColors.muted)),
             ],
           ),
         ),
-        for (final t in trailing) ...[const SizedBox(width: 10), t],
+        for (final t in trailing) ...[SizedBox(width: small ? 8 : 10), t],
       ],
     );
   }

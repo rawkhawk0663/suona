@@ -149,7 +149,7 @@ class _ShopScreenState extends State<ShopScreen> {
         body: AppBackground(
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(28, 20, 28, 24),
+              padding: context.screenPadding,
               child: Column(
                 children: [
                   ScreenHeader(
@@ -157,7 +157,7 @@ class _ShopScreenState extends State<ShopScreen> {
                     subtitle: tr('Nur mit Spiel-Münzen, nie mit Geld', 'Game coins only, never real money'),
                     trailing: [InfoPill(child: CoinCount(p.coins, size: 21))],
                   ),
-                  const SizedBox(height: 18),
+                  SizedBox(height: context.compact ? 8 : 18),
                   Expanded(
                     child: LayoutBuilder(
                       builder: (context, c) {
@@ -184,7 +184,7 @@ class _ShopScreenState extends State<ShopScreen> {
                               tabs: [
                                 for (final (label, icon) in tabs)
                                   Tab(
-                                    height: 48,
+                                    height: context.compact ? 38 : 48,
                                     child: Padding(
                                       padding: const EdgeInsets.symmetric(horizontal: 6),
                                       child: Row(
@@ -195,7 +195,7 @@ class _ShopScreenState extends State<ShopScreen> {
                                   ),
                               ],
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: context.compact ? 6 : 12),
                             Expanded(
                               child: TabBarView(
                                 children: [
@@ -213,12 +213,12 @@ class _ShopScreenState extends State<ShopScreen> {
                             ),
                           ],
                         );
-                        if (c.maxWidth >= 820) {
+                        if (c.maxWidth >= 820 || (context.compact && c.maxWidth >= 600)) {
                           return Row(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              SizedBox(width: c.maxWidth * 0.32, child: preview),
-                              const SizedBox(width: 24),
+                              SizedBox(width: c.maxWidth * (context.compact ? 0.26 : 0.32), child: preview),
+                              SizedBox(width: context.compact ? 12 : 24),
                               Expanded(child: content),
                             ],
                           );
@@ -247,11 +247,11 @@ class _ShopScreenState extends State<ShopScreen> {
     final ampHint = slot == ShopSlot.amp && CharacterArt.instance.isAcoustic(p.look.guitar);
     final grid = GridView.builder(
       padding: const EdgeInsets.only(bottom: 20),
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 230,
-        mainAxisExtent: 286,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
+      gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: context.compact ? 170 : 230,
+        mainAxisExtent: context.compact ? 214 : 286,
+        crossAxisSpacing: context.compact ? 8 : 12,
+        mainAxisSpacing: context.compact ? 8 : 12,
       ),
       itemCount: items.length,
       itemBuilder: (context, i) {
@@ -403,7 +403,11 @@ class _SetCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              SizedBox(width: 150, height: 210, child: CharacterView(withElectric(Shop.wearSet(p, set, all: true)))),
+              SizedBox(
+                width: context.compact ? 100 : 150,
+                height: context.compact ? 150 : 210,
+                child: CharacterView(withElectric(Shop.wearSet(p, set, all: true))),
+              ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -576,7 +580,7 @@ class _ItemCard extends StatelessWidget {
                 maxLines: 2,
                 style: display(17),
               ),
-              if (item.help.isNotEmpty)
+              if (item.help.isNotEmpty && !context.compact)
                 Text(
                   item.help,
                   textAlign: TextAlign.center,

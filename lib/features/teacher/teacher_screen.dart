@@ -29,10 +29,13 @@ class TeacherScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Handy quer: niedrigere Leiste, Reiter nur mit Text.
+    final small = context.compact;
     return DefaultTabController(
       length: 5,
       child: Scaffold(
         appBar: AppBar(
+          toolbarHeight: small ? 44 : null,
           title: Text(tr('Lehrerbereich', 'Teacher area')),
           bottom: TabBar(
             isScrollable: true,
@@ -40,11 +43,11 @@ class TeacherScreen extends StatelessWidget {
             labelStyle: display(17),
             unselectedLabelStyle: display(17, weight: FontWeight.w600),
             tabs: [
-              Tab(icon: const Icon(Icons.people_alt_rounded), text: tr('Profile', 'Profiles')),
-              Tab(icon: const Icon(Icons.route_rounded), text: tr('Lehrpläne', 'Curricula')),
-              Tab(icon: const Icon(Icons.tune_rounded), text: tr('Einstellungen', 'Settings')),
-              Tab(icon: const Icon(Icons.mic_rounded), text: tr('Mikrofon-Test', 'Mic test')),
-              Tab(icon: const Icon(Icons.info_outline_rounded), text: tr('Über Suona', 'About Suona')),
+              small ? Tab(text: tr('Profile', 'Profiles')) : Tab(icon: const Icon(Icons.people_alt_rounded), text: tr('Profile', 'Profiles')),
+              small ? Tab(text: tr('Lehrpläne', 'Curricula')) : Tab(icon: const Icon(Icons.route_rounded), text: tr('Lehrpläne', 'Curricula')),
+              small ? Tab(text: tr('Einstellungen', 'Settings')) : Tab(icon: const Icon(Icons.tune_rounded), text: tr('Einstellungen', 'Settings')),
+              small ? Tab(text: tr('Mikrofon-Test', 'Mic test')) : Tab(icon: const Icon(Icons.mic_rounded), text: tr('Mikrofon-Test', 'Mic test')),
+              small ? Tab(text: tr('Über Suona', 'About Suona')) : Tab(icon: const Icon(Icons.info_outline_rounded), text: tr('Über Suona', 'About Suona')),
             ],
           ),
         ),

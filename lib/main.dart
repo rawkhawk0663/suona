@@ -23,6 +23,7 @@ Future<void> main() async {
   ErrorLog.install(support);
   _registerFontLicenses();
   await _prepareWindow();
+  await _prepareShortScreens();
   // Vorlagen und Shop-Teile der Figuren laden (für das eigene Aussehen).
   await CharacterArt.load();
   final state = SuonaState(support);
@@ -50,6 +51,23 @@ Future<void> _prepareWindow() async {
     );
   } catch (e, st) {
     ErrorLog.record(e, st, where: 'Fenster vorbereiten');
+  }
+}
+
+/// Handy (kürzere Seite unter 600 Punkten): immer quer und ohne Systemleisten.
+/// Das Griffbrett braucht die Breite, hochkant wären die Bünde für
+/// Kinderfinger zu schmal. Tablets und Computer bleiben frei.
+Future<void> _prepareShortScreens() async {
+  if (kIsWeb || !(Platform.isAndroid || Platform.isIOS)) return;
+  final views = WidgetsBinding.instance.platformDispatcher.views;
+  if (views.isEmpty) return;
+  final view = views.first;
+  if (view.physicalSize.shortestSide / view.devicePixelRatio >= 600) return;
+  try {
+    await SystemChrome.setPreferredOrientations([DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight]);
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  } catch (e, st) {
+    ErrorLog.record(e, st, where: 'Querformat');
   }
 }
 

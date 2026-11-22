@@ -143,13 +143,14 @@ class FeedbackBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final small = context.compact;
     final colors = switch (kind) {
       FeedbackKind.right => SuonaColors.mint,
       FeedbackKind.shield => SuonaColors.brand,
       FeedbackKind.wrong => [SuonaColors.wrong, SuonaColors.wrong],
     };
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+      padding: small ? const EdgeInsets.symmetric(horizontal: 14, vertical: 6) : const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
       decoration: BoxDecoration(
         gradient: gradientOf(colors, horizontal: true),
         borderRadius: BorderRadius.circular(999),
@@ -161,17 +162,17 @@ class FeedbackBadge extends StatelessWidget {
           Icon(
             icon ?? (kind == FeedbackKind.right ? Icons.check_rounded : Icons.close_rounded),
             color: Colors.white,
-            size: 28,
+            size: small ? 20 : 28,
           ),
-          const SizedBox(width: 10),
-          Flexible(child: Text(text, style: display(26, color: Colors.white))),
+          SizedBox(width: small ? 6 : 10),
+          Flexible(child: Text(text, style: display(small ? 17 : 26, color: Colors.white))),
           if (extra != null) ...[
             const SizedBox(width: 8),
-            Text(extra!, style: display(18, color: Colors.white70, weight: FontWeight.w600)),
+            Text(extra!, style: display(small ? 13 : 18, color: Colors.white70, weight: FontWeight.w600)),
           ],
           if (gain != null) ...[
-            const SizedBox(width: 12),
-            Text('+$gain', style: display(20, color: Colors.white.withValues(alpha: 0.95))),
+            SizedBox(width: small ? 8 : 12),
+            Text('+$gain', style: display(small ? 15 : 20, color: Colors.white.withValues(alpha: 0.95))),
           ],
         ],
       ),
@@ -181,21 +182,22 @@ class FeedbackBadge extends StatelessWidget {
 
 /// Punkte für die Fragen einer Runde: Mint = richtig, rot = falsch.
 class ProgressDots extends StatelessWidget {
-  const ProgressDots({super.key, required this.total, required this.results});
+  const ProgressDots({super.key, required this.total, required this.results, this.size = 22});
   final int total;
   final List<bool> results;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
     return Wrap(
-      spacing: 8,
-      runSpacing: 6,
+      spacing: size * 0.36,
+      runSpacing: size * 0.28,
       children: [
         for (var i = 0; i < total; i++)
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            width: 22,
-            height: 22,
+            width: size,
+            height: size,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: i < results.length && results[i] ? gradientOf(SuonaColors.mint) : null,
@@ -219,16 +221,17 @@ class ComboBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final small = context.compact;
     return Container(
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      height: small ? 32 : 40,
+      padding: EdgeInsets.symmetric(horizontal: small ? 10 : 16),
       alignment: Alignment.center,
       decoration: BoxDecoration(
         gradient: gradientOf(SuonaColors.sun, horizontal: true),
         borderRadius: BorderRadius.circular(999),
         boxShadow: glowOf(SuonaColors.sun, strength: 0.3, blur: 18),
       ),
-      child: Text('Combo ×$multiplier', style: display(17, color: Colors.white)),
+      child: Text(small ? '×$multiplier' : 'Combo ×$multiplier', style: display(small ? 14 : 17, color: Colors.white)),
     );
   }
 }
@@ -259,6 +262,7 @@ class CrowdBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final good = mood > 0.55, ok = mood > 0.25;
+    final small = context.compact;
     final colors = good ? SuonaColors.mint : (ok ? SuonaColors.sun : [SuonaColors.wrong, SuonaColors.rose]);
     return Row(
       children: [
@@ -268,21 +272,20 @@ class CrowdBar extends StatelessWidget {
             good
                 ? Icons.sentiment_very_satisfied_rounded
                 : (ok ? Icons.sentiment_neutral_rounded : Icons.sentiment_very_dissatisfied_rounded),
-            size: 32,
+            size: small ? 24 : 32,
             color: Colors.white,
           ),
         ),
         const SizedBox(width: 8),
-        Text(tr('Publikum', 'Crowd'), style: display(17)),
-        const SizedBox(width: 12),
+        if (!small) ...[Text(tr('Publikum', 'Crowd'), style: display(17)), const SizedBox(width: 12)],
         Expanded(
           child: TweenAnimationBuilder<double>(
             tween: Tween(end: mood),
             duration: const Duration(milliseconds: 350),
-            builder: (context, v, _) => GradientBar(value: v, height: 12, colors: colors),
+            builder: (context, v, _) => GradientBar(value: v, height: small ? 8 : 12, colors: colors),
           ),
         ),
-        for (final p in pedals) ...[const SizedBox(width: 10), p],
+        for (final p in pedals) ...[SizedBox(width: small ? 6 : 10), p],
       ],
     );
   }
@@ -290,16 +293,17 @@ class CrowdBar extends StatelessWidget {
 
 /// Weisses Notenblatt (in beiden Modi), leicht abgehoben.
 class PaperCard extends StatelessWidget {
-  const PaperCard({super.key, required this.child, this.padding = const EdgeInsets.fromLTRB(20, 8, 20, 8)});
+  const PaperCard({super.key, required this.child, this.padding});
   final Widget child;
-  final EdgeInsetsGeometry padding;
+  final EdgeInsetsGeometry? padding;
 
   @override
   Widget build(BuildContext context) {
+    final small = context.compact;
     return Container(
       decoration: BoxDecoration(
         color: SuonaColors.paper,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(small ? 18 : 28),
         border: Border.all(color: SuonaColors.line),
         boxShadow: [
           BoxShadow(
@@ -309,7 +313,7 @@ class PaperCard extends StatelessWidget {
           ),
         ],
       ),
-      padding: padding,
+      padding: padding ?? (small ? const EdgeInsets.fromLTRB(10, 4, 10, 4) : const EdgeInsets.fromLTRB(20, 8, 20, 8)),
       child: child,
     );
   }
@@ -326,7 +330,11 @@ class BoardCard extends StatelessWidget {
     return Center(
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxWidth),
-        child: SuonaCard(radius: 24, padding: const EdgeInsets.fromLTRB(10, 12, 14, 6), child: child),
+        child: SuonaCard(
+          radius: context.compact ? 18 : 24,
+          padding: context.compact ? const EdgeInsets.fromLTRB(6, 6, 8, 2) : const EdgeInsets.fromLTRB(10, 12, 14, 6),
+          child: child,
+        ),
       ),
     );
   }

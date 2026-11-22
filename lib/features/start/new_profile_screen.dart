@@ -61,7 +61,7 @@ class _NewProfileScreenState extends State<NewProfileScreen> {
               ),
               Center(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(24, 70, 24, 90),
+                  padding: context.compact ? const EdgeInsets.fromLTRB(70, 12, 70, 24) : const EdgeInsets.fromLTRB(24, 70, 24, 90),
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 640),
                     child: Column(
@@ -69,7 +69,7 @@ class _NewProfileScreenState extends State<NewProfileScreen> {
                         Text(
                           tr('Mit wem willst du rocken?', 'Who do you want to rock with?'),
                           textAlign: TextAlign.center,
-                          style: display(32),
+                          style: display(context.compact ? 24 : 32),
                         ),
                         const SizedBox(height: 22),
                         Row(
@@ -191,7 +191,7 @@ class _CharacterChoice extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(10, 16, 10, 14),
       child: Column(
         children: [
-          SizedBox(height: 230, child: CharacterView(look)),
+          SizedBox(height: context.compact ? 150 : 230, child: CharacterView(look)),
           const SizedBox(height: 8),
           Text(look.character.displayName, style: display(28)),
         ],
@@ -216,7 +216,7 @@ class _GuitarChoice extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(10, 12, 10, 14),
       child: Column(
         children: [
-          SizedBox(height: 150, child: CharacterView(look, guitar: true)),
+          SizedBox(height: context.compact ? 96 : 150, child: CharacterView(look, guitar: true)),
           const SizedBox(height: 8),
           Text(label, textAlign: TextAlign.center, style: display(20)),
         ],

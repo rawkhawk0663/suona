@@ -178,7 +178,7 @@ class ChordTourSpec extends TourSpec {
         ),
         const SizedBox(height: 6),
         SizedBox(
-          height: 170,
+          height: MediaQuery.sizeOf(context).height < 520 ? 110 : 170,
           child: ListView(
             scrollDirection: Axis.horizontal,
             children: [

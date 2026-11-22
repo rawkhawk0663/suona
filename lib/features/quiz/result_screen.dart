@@ -92,121 +92,152 @@ class ResultScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = SuonaScope.of(context);
     final profile = state.profiles.where((p) => p.id == profileId).firstOrNull;
+    final small = context.compact;
+    final buttons = Wrap(
+          spacing: small ? 8 : 16,
+          runSpacing: small ? 8 : 12,
+          alignment: WrapAlignment.center,
+          direction: small ? Axis.vertical : Axis.horizontal,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            if (adventure != null && adventure!.passed && profile != null && next != null)
+              ?next!(context, state, profile),
+            GradientButton(
+              label: tr('Nochmal', 'Again'),
+              icon: Icons.replay_rounded,
+              height: 60,
+              fontSize: 21,
+              onPressed: () => Navigator.of(context).pushReplacement(MaterialPageRoute<void>(builder: again)),
+            ),
+            GradientButton(
+              label: adventure != null ? tr('Zur Karte', 'To the map') : tr('Fertig', 'Done'),
+              icon: adventure != null ? Icons.map_rounded : Icons.home_rounded,
+              secondary: true,
+              height: 60,
+              fontSize: 21,
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        );
+    final details = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox(height: 10),
+        Text(_headline, textAlign: TextAlign.center, style: display(small ? 30 : 44)),
+        const SizedBox(height: 8),
+        if (!_arcade)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 0; i < 3; i++)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: i < stars
+                      ? GradientTint(
+                          colors: SuonaColors.sun,
+                          child: Icon(
+                            Icons.star_rounded,
+                            size: (i == 1 ? 78 : 62) * (small ? 0.7 : 1.0),
+                            color: Colors.white,
+                          ),
+                        )
+                      : Icon(
+                          Icons.star_rounded,
+                          size: (i == 1 ? 78 : 62) * (small ? 0.7 : 1.0),
+                          color: SuonaColors.muted.withValues(alpha: 0.3),
+                        ),
+                ),
+            ],
+          ),
+        const SizedBox(height: 8),
+        Text(
+          tr('$correct von $total richtig', '$correct of $total right'),
+          style: display(24, color: SuonaColors.muted, weight: FontWeight.w600),
+        ),
+        const SizedBox(height: 12),
+        SuonaCard(
+          padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 14),
+          child: Column(
+            children: [
+              CoinCount(coins, size: 34),
+              if (bonus > 0)
+                Text(
+                  adventure != null
+                      ? tr('davon $bonus Bonus fürs erste Mal', 'incl. $bonus first-time bonus')
+                      : tr('davon $bonus Sterne-Bonus', 'incl. $bonus star bonus'),
+                  style: body(15, color: SuonaColors.muted),
+                ),
+            ],
+          ),
+        ),
+        if (_streakText != null && profile != null) ...[
+          const SizedBox(height: 14),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              StreakCount(profile.streak.days, size: 28),
+              const SizedBox(width: 10),
+              Flexible(child: Text(_streakText!, style: display(20))),
+            ],
+          ),
+        ],
+        if (adventure != null && !adventure!.passed) ...[
+          const SizedBox(height: 10),
+          Text(
+            adventure!.crowdGone
+                ? tr(
+                    'Zu viele Fehler hintereinander. Mit einem Schild-Pedal aus dem Shop geht es leichter.',
+                    'Too many mistakes in a row. A shield pedal from the shop makes it easier.',
+                  )
+                : tr('Für einen Stern brauchst du 6 von 10 richtig.', 'You need 6 out of 10 right for a star.'),
+            textAlign: TextAlign.center,
+            style: body(17, color: SuonaColors.muted),
+          ),
+        ],
+        if (!small) ...[const SizedBox(height: 28), buttons],
+      ],
+    );
+    final character = profile == null
+        ? const SizedBox()
+        : Container(
+            width: small ? 220 : 320,
+            height: small ? null : 230,
+            decoration: BoxDecoration(gradient: characterGlow(strength: 1.2)),
+            child: CharacterView(profile.look),
+          );
     return Scaffold(
       body: AppBackground(
         child: SafeArea(
           child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  if (profile != null)
-                    Container(
-                      width: 320,
-                      height: 230,
-                      decoration: BoxDecoration(gradient: characterGlow(strength: 1.2)),
-                      child: CharacterView(profile.look),
-                    ),
-                  const SizedBox(height: 10),
-                  Text(_headline, textAlign: TextAlign.center, style: display(44)),
-                  const SizedBox(height: 8),
-                  if (!_arcade)
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        for (var i = 0; i < 3; i++)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            child: i < stars
-                                ? GradientTint(
-                                    colors: SuonaColors.sun,
-                                    child: Icon(Icons.star_rounded, size: i == 1 ? 78 : 62, color: Colors.white),
-                                  )
-                                : Icon(Icons.star_rounded, size: i == 1 ? 78 : 62, color: SuonaColors.muted.withValues(alpha: 0.3)),
-                          ),
-                      ],
-                    ),
-                  const SizedBox(height: 8),
-                  Text(
-                    tr('$correct von $total richtig', '$correct of $total right'),
-                    style: display(24, color: SuonaColors.muted, weight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 12),
-                  SuonaCard(
-                    padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 14),
-                    child: Column(
-                      children: [
-                        CoinCount(coins, size: 34),
-                        if (bonus > 0)
-                          Text(
-                            adventure != null
-                                ? tr('davon $bonus Bonus fürs erste Mal', 'incl. $bonus first-time bonus')
-                                : tr('davon $bonus Sterne-Bonus', 'incl. $bonus star bonus'),
-                            style: body(15, color: SuonaColors.muted),
-                          ),
-                      ],
-                    ),
-                  ),
-                  if (_streakText != null && profile != null) ...[
-                    const SizedBox(height: 14),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        StreakCount(profile.streak.days, size: 28),
-                        const SizedBox(width: 10),
-                        Flexible(
-                          child: Text(
-                            _streakText!,
-                            style: display(20),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                  if (adventure != null && !adventure!.passed) ...[
-                    const SizedBox(height: 10),
-                    Text(
-                      adventure!.crowdGone
-                          ? tr(
-                              'Zu viele Fehler hintereinander. Mit einem Schild-Pedal aus dem Shop geht es leichter.',
-                              'Too many mistakes in a row. A shield pedal from the shop makes it easier.',
-                            )
-                          : tr(
-                              'Für einen Stern brauchst du 6 von 10 richtig.',
-                              'You need 6 out of 10 right for a star.',
-                            ),
-                      textAlign: TextAlign.center,
-                      style: body(17, color: SuonaColors.muted),
-                    ),
-                  ],
-                  const SizedBox(height: 28),
-                  Wrap(
-                    spacing: 16,
-                    runSpacing: 12,
-                    alignment: WrapAlignment.center,
+            child: small
+                // Handy quer: Figur links, Ergebnis rechts.
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      if (adventure != null && adventure!.passed && profile != null && next != null)
-                        ?next!(context, state, profile),
-                      GradientButton(
-                        label: tr('Nochmal', 'Again'),
-                        icon: Icons.replay_rounded,
-                        height: 60,
-                        fontSize: 21,
-                        onPressed: () => Navigator.of(context).pushReplacement(MaterialPageRoute<void>(builder: again)),
+                      SizedBox(
+                        width: 240,
+                        child: Column(
+                          children: [
+                            Expanded(child: character),
+                            const SizedBox(height: 8),
+                            buttons,
+                            const SizedBox(height: 10),
+                          ],
+                        ),
                       ),
-                      GradientButton(
-                        label: adventure != null ? tr('Zur Karte', 'To the map') : tr('Fertig', 'Done'),
-                        icon: adventure != null ? Icons.map_rounded : Icons.home_rounded,
-                        secondary: true,
-                        height: 60,
-                        fontSize: 21,
-                        onPressed: () => Navigator.of(context).pop(),
+                      const SizedBox(width: 16),
+                      Flexible(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                          child: details,
+                        ),
                       ),
                     ],
+                  )
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(children: [character, details]),
                   ),
-                ],
-              ),
-            ),
           ),
         ),
       ),
