@@ -582,25 +582,29 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
       case QuestionType.fretFromStaff:
         return Row(
           children: [
-            SizedBox(width: min(260.0, c.maxWidth * 0.3), child: _withFeedback(_staffCard(maxWidth: 260, aspect: 1.15))),
+            // Schmales Notenblatt, damit das Griffbrett möglichst breit wird.
+            SizedBox(width: min(170.0, c.maxWidth * 0.21), child: _staffCard(maxWidth: 170, aspect: 0.9)),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 children: [
                   if (_playMode) ...[_listenPanel(compact: true), const SizedBox(height: 6)],
                   if (_q.onString != null) _stringHint(),
-                  Expanded(child: _fretboardCard(answer: true)),
+                  // Rückmeldung auf dem Griffbrett, das Notenblatt ist zu schmal dafür.
+                  Expanded(child: _withFeedback(_fretboardCard(answer: true))),
                 ],
               ),
             ),
           ],
         );
       case QuestionType.nameFromFret:
-        return Row(
+        // Griffbrett über die ganze Breite (sonst sind die Bünde zu eng),
+        // die Knöpfe in einer Reihe darunter (Wunsch des Besitzers).
+        return Column(
           children: [
             Expanded(child: _withFeedback(_fretboardCard())),
-            const SizedBox(width: 14),
-            SizedBox(width: side, child: Center(child: _letterPad(side: true))),
+            const SizedBox(height: 8),
+            _letterPad(oneRow: true),
           ],
         );
       case QuestionType.staffFromFret:
@@ -999,12 +1003,51 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
   }
 
   /// Notenknöpfe. Wenig Platz (Handy, Seitenleiste): 4 + 3 in zwei Reihen.
-  Widget _letterPad({bool side = false}) {
+  Widget _letterPad({bool side = false, bool oneRow = false}) {
     final enharmonic = _q.type == QuestionType.nameFromFret;
     final small = context.compact;
+    Widget letter(Letter l, double w, double h) => AnswerButton(
+      label: letterLabel(l, _naming),
+      width: w,
+      height: h,
+      state: _answeredLetter == l
+          ? (_phase == _Phase.correct ? AnswerState.right : AnswerState.wrong)
+          : (_phase == _Phase.wrong && l == _note.letter ? AnswerState.hint : AnswerState.normal),
+      hidden: _hiddenLetters.contains(l),
+      onTap: _phase == _Phase.asking && !_hiddenLetters.contains(l) ? () => _answerName(l) : null,
+    );
+    Widget modifier(Accidental a, double h) => _ModifierButton(
+      accidental: a,
+      // Nach einem Fehler zeigt die Markierung das richtige Vorzeichen.
+      selected: _modifier == a || (_phase == _Phase.wrong && _note.accidental == a),
+      height: h,
+      onTap: _phase == _Phase.asking ? () => setState(() => _modifier = _modifier == a ? Accidental.natural : a) : null,
+    );
     return LayoutBuilder(
       builder: (context, c) {
         final gap = small ? 8.0 : 12.0;
+        if (oneRow) {
+          // Eine Reihe: zuerst ♯ und ♭ (die wählt man zuerst), dann die sieben Töne.
+          const h = 58.0;
+          final accHeight = h * 0.86;
+          final accWidth = _hasAccidentals ? 2 * accHeight * 1.5 + 2 * gap + 8 : 0.0;
+          final w = min(110.0, (c.maxWidth - accWidth - 6 * gap) / 7);
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (_hasAccidentals) ...[
+                for (final a in const [Accidental.sharp, Accidental.flat])
+                  Padding(padding: EdgeInsets.only(right: gap), child: modifier(a, accHeight)),
+                const SizedBox(width: 8),
+              ],
+              for (var i = 0; i < Letter.values.length; i++)
+                Padding(
+                  padding: EdgeInsets.only(left: i == 0 ? 0 : gap),
+                  child: letter(Letter.values[i], w, h),
+                ),
+            ],
+          );
+        }
         final twoRows = side || c.maxWidth < 520;
         final perRow = twoRows ? 4 : 7;
         final size = min(twoRows ? 80.0 : 104.0, (c.maxWidth - (perRow - 1) * gap) / perRow);
@@ -1016,20 +1059,7 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
               spacing: gap,
               runSpacing: gap,
               children: [
-                for (final l in Letter.values)
-                  Padding(
-                    padding: EdgeInsets.zero,
-                    child: AnswerButton(
-                      label: letterLabel(l, _naming),
-                      width: size,
-                      height: size,
-                      state: _answeredLetter == l
-                          ? (_phase == _Phase.correct ? AnswerState.right : AnswerState.wrong)
-                          : (_phase == _Phase.wrong && l == _note.letter ? AnswerState.hint : AnswerState.normal),
-                      hidden: _hiddenLetters.contains(l),
-                      onTap: _phase == _Phase.asking && !_hiddenLetters.contains(l) ? () => _answerName(l) : null,
-                    ),
-                  ),
+                for (final l in Letter.values) letter(l, size, size),
               ],
             ),
             if (_hasAccidentals) ...[
@@ -1040,15 +1070,7 @@ class _QuizScreenState extends State<QuizScreen> with SingleTickerProviderStateM
                   for (final a in const [Accidental.sharp, Accidental.flat])
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 6),
-                      child: _ModifierButton(
-                        accidental: a,
-                        // Nach einem Fehler zeigt Gelb das richtige Vorzeichen.
-                        selected: _modifier == a || (_phase == _Phase.wrong && _note.accidental == a),
-                        height: twoRows ? size * 0.66 : size * 0.72,
-                        onTap: _phase == _Phase.asking
-                            ? () => setState(() => _modifier = _modifier == a ? Accidental.natural : a)
-                            : null,
-                      ),
+                      child: modifier(a, twoRows ? size * 0.66 : size * 0.72),
                     ),
                 ],
               ),
