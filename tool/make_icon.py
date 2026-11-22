@@ -26,19 +26,30 @@ def mark(size=1024):
     k = S / 1024
     pick = Image.new("L", (S, S), 0)
     d = ImageDraw.Draw(pick)
-    # Plektrum: oben breit und rund, unten spitz (wie das frühere Symbol).
-    cx, top, bot, w = 512, 120, 930, 720
-    path = []
-    for i in range(181):
-        t = math.pi - i / 180 * math.pi
-        path.append((cx + w / 2 * math.cos(t), top + 90 - 100 * math.sin(t)))
-    n = 90
-    for i in range(1, n + 1):
-        f = i / n
-        path.append((cx + w / 2 * math.sqrt(max(0, 1 - f ** 1.7)), top + 90 + (bot - top - 90) * f))
-    for i in range(n, 0, -1):
-        f = i / n
-        path.append((cx - w / 2 * math.sqrt(max(0, 1 - f ** 1.7)), top + 90 + (bot - top - 90) * f))
+    # Plektrum in der klassischen Form (Wunsch des Besitzers): oben flach
+    # gewölbt, breite runde Schultern, Seiten leicht bauchig zur Spitze.
+    # Rechte Hälfte als kubische Bézier-Kurven (x ab Mitte, y von oben),
+    # Masse relativ zur Höhe, links gespiegelt.
+    top, height = 110, 830
+    cx = 512
+
+    def bez(p0, p1, p2, p3, n=80):
+        return [
+            (
+                (1 - t) ** 3 * p0[0] + 3 * (1 - t) ** 2 * t * p1[0] + 3 * (1 - t) * t * t * p2[0] + t ** 3 * p3[0],
+                (1 - t) ** 3 * p0[1] + 3 * (1 - t) ** 2 * t * p1[1] + 3 * (1 - t) * t * t * p2[1] + t ** 3 * p3[1],
+            )
+            for t in (i / n for i in range(n + 1))
+        ]
+
+    right = (
+        bez((0, 0), (0.26, 0), (0.45, 0.04), (0.47, 0.25))  # oben zur Schulter
+        + bez((0.47, 0.25), (0.49, 0.48), (0.31, 0.80), (0.075, 0.965))[1:]  # bauchige Seite
+        + bez((0.075, 0.965), (0.045, 0.99), (0.02, 1.0), (0, 1.0))[1:]  # runde Spitze
+    )
+    half = [(x * height, y * height) for x, y in right]
+    outline = half + [(-x, y) for x, y in reversed(half[:-1])]
+    path = [(cx + x, top + y) for x, y in outline]
     d.polygon([(x * k, y * k) for x, y in path], fill=255)
     # Zwei Achtelnoten mit Balken, ausgeschnitten.
     notes = Image.new("L", (S, S), 0)
@@ -51,6 +62,8 @@ def mark(size=1024):
     nd.rectangle([462 * k, 330 * k, 490 * k, 630 * k], fill=255)
     nd.rectangle([666 * k, 280 * k, 694 * k, 580 * k], fill=255)
     nd.polygon([(462 * k, 300 * k), (694 * k, 248 * k), (694 * k, 322 * k), (462 * k, 374 * k)], fill=255)
+    # Die Noten optisch in die Mitte des Plektrums rücken.
+    notes = ImageChops.offset(notes, round(-24 * k), round(8 * k))
     alpha = ImageChops.subtract(pick, notes)
     alpha = alpha.resize((size, size), Image.LANCZOS)
     white = Image.new("RGBA", (size, size), (255, 255, 255, 0))
