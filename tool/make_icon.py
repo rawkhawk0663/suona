@@ -16,7 +16,7 @@ from PIL import Image, ImageChops, ImageDraw
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Rundung der Ecken (Anteil der Kantenlänge), Grösse der Marke im Quadrat.
 RADIUS = 0.22
-SCALE = 0.66
+SCALE = 0.8
 ICO_SIZES = [16, 20, 24, 32, 40, 48, 64, 96, 128, 256]
 
 
