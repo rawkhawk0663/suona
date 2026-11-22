@@ -15,7 +15,7 @@ Der Bauplan (fünf Pakete) liegt als Artifact „Suona Bauplan“ beim Besitzer.
 - Ein Profil hat nur **Spitzname und Figur** (Luna oder Fuzz). Kein echter Name, kein Alter, keine Fotos. Statt des Alters wählt die Lehrperson eine **Stufe** (`Difficulty`), gespeichert wird nur die Stufe.
 - **Internet nur für „Nach Updates suchen“** im gesperrten Lehrerbereich, nur auf Knopfdruck. Suona sucht **nie** von selbst (anders als Volti).
 - **Mikrofon** nur im Mikrofon-Test und wenn beim Üben der Schalter „Gitarre“ an ist („Echt spielen“). Ton wird nur im Speicher ausgewertet, nie aufgenommen oder gespeichert. Sichtbar anzeigen, wann es an ist. Android fragt die Berechtigung erst beim Öffnen.
-- **Lehrerbereich** hinter einer Rechenaufgabe (`teacher_gate.dart`). Löschen von Profilen nur dort.
+- **Lehrerbereich** hinter einer Rechenaufgabe (`teacher_gate.dart`). Löschen von Profilen nur dort. Profile stehen dort als Pillen (Gesicht + Spitzname, alphabetisch, ab 10 mit Suche), erst ein Antippen öffnet die Karte darunter (`_ProfilesTab`, Wunsch des Besitzers: über 30 Kinder).
 - **Fair belohnen:** keine Zufalls-Kisten, kein Druck. Verpasste Tage kosten nur die Zählung, nie Münzen. Streak-Schutz (alle 7 Tage einer, höchstens 2) rettet Lücken automatisch.
 - Datenschutz-Erklärung in zwei Fassungen (Kinder/Eltern): `features/teacher/privacy.dart`. Bei neuen Daten oder Berechtigungen dort nachtragen.
 
@@ -131,7 +131,8 @@ tool/make_icon.py   erzeugt das App-Symbol wie Volti/Conti (Verlauf + weisse Mar
 ## Technik
 - Flutter `3.47.9` (in `.github/workflows/build.yml`), Material 3. Hauptgerät: Microsoft Surface (Windows), danach Android, später evtl. iPad.
 - Jeder Push auf `main` baut Windows (ZIP + `Suona-Setup.exe`) und Android (`Suona-Android.apk`) und legt sie als Release in diesem öffentlichen Projekt ab (zweisprachige Release-Texte). Von dort holt „Nach Updates suchen“ die neue Version (`Updater.repo`) (Ablauf wie Volti, siehe dort Punkt 33). Die Builds laden ihre Dateien direkt in einen Release-Entwurf (Job `draft`), der am Schluss veröffentlicht wird. Keine `upload-artifact`-Schritte: Der Speicher dafür ist im Konto voll (mit Volti geteilt).
-- Versionsnummer `v0.1.<run_number>` über `--dart-define=SUONA_VERSION`.
+- Versionsnummer `v0.1.<run_number>` über `--dart-define=SUONA_VERSION`, Android-versionName gleich (`--build-name`).
+- **Android mit Obtainium** (Wunsch des Besitzers, wie Volti): Adresse `https://github.com/rawkhawk0663/suona`. Jede APK muss mit **demselben Schlüssel** signiert sein: Geheimnisse `SUONA_KEYSTORE` (Base64 der .jks) und `SUONA_KEYSTORE_PASSWORD` im GitHub-Projekt (`android/app/build.gradle.kts`, der Name des Schlüssels wird aus der Datei gelesen, der Schlüssel von Volti/Conti passt). Fehlen sie, wird mit dem Test-Schlüssel signiert (Warnung im Build). Hinweis auf Obtainium im Lehrerbereich unter „Über Suona“ (nur Android, ohne Link) und in den Release-Texten.
 - Bedienung vollständig mit Finger möglich. Tastatur geht zusätzlich (Tasten c d e f g a h, `#` und `-` für die Vorzeichen).
 
 ## Prüfen

@@ -37,6 +37,8 @@ You don't need administrator rights to install it. Uninstall it like any other a
 
 **Updates:** Suona never goes online by itself. In the teacher area under *About Suona* → *Check for updates* you install a new version with one tap, and Suona restarts. Game progress is kept.
 
+**Android with Obtainium:** new versions arrive by themselves with the [Obtainium](https://obtainium.imranr.dev/) app. In Obtainium choose *Add app* and enter `https://github.com/rawkhawk0663/suona`.
+
 ## What Suona can do
 
 ### For the children
@@ -58,6 +60,7 @@ You don't need administrator rights to install it. Uninstall it like any other a
 ### For teachers and parents (teacher area)
 - **Teacher area** behind a small maths question: the lock at the top right of the start screen.
 - **Curricula:** the order in which notes are learned. The order from "guitarTALKS" is built in. Plus chord curricula: which chords come in which order and on how many strings. The “Chord tour” is built in (C, G, G7 · Em, F · Am · D, Dm, D7 on three strings, then with more strings up to B7). You can create your own, for example for another guitar method.
+- **Profiles as buttons:** all children are listed alphabetically as small buttons with face and nickname, with a search from ten profiles. One tap opens a profile, so it stays clear even with a whole class.
 - **For each child:** choose a curriculum and a chord curriculum, set how far the child has got (this also opens the adventure stations and the chord tour stops), set the level by age (Mini about 6–8, Junior 9–11, Teen 12–15, Pro 16 and up) and see which notes are already secure, separately for reading notes, the fretboard and chords.
 - **Arcade presets,** for example "1st position", "G string only" or your own, like "Homework Mia".
 - **Settings:** note names in German (H, B, Fis) or international (B, B♭, F♯), sharps, flats or both, which string is at the top of the fretboard, sound on or off, dark or light appearance, language.

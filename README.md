@@ -37,6 +37,8 @@ Für die Installation brauchst du keine Administrator-Rechte. Deinstallieren geh
 
 **Updates:** Suona sucht nie von selbst im Internet. Im Lehrerbereich unter *Über Suona* → *Nach Updates suchen* installierst du eine neue Version mit einem Tippen, und Suona startet danach neu. Die Spielstände bleiben erhalten.
 
+**Android mit Obtainium:** Neue Versionen kommen von selbst mit der App [Obtainium](https://obtainium.imranr.dev/). In Obtainium *App hinzufügen* wählen und `https://github.com/rawkhawk0663/suona` eintragen.
+
 ## Was Suona kann
 
 ### Für die Kinder
@@ -58,6 +60,7 @@ Für die Installation brauchst du keine Administrator-Rechte. Deinstallieren geh
 ### Für Lehrpersonen und Eltern (Lehrerbereich)
 - **Lehrerbereich** hinter einer kleinen Rechenaufgabe: das Schloss oben rechts auf dem Startbildschirm.
 - **Lehrpläne:** Die Reihenfolge, in der die Töne gelernt werden. Eingebaut ist die Reihenfolge aus „guitarTALKS“. Dazu Akkord-Lehrpläne: welche Akkorde nacheinander kommen und auf wie vielen Saiten. Eingebaut ist die „Akkord-Tour“ (C, G, G7 · Em, F · Am · D, Dm, D7 auf drei Saiten, danach mit mehr Saiten bis H7). Eigene Lehrpläne, etwa nach einer anderen Gitarrenschule, legst du selbst an.
+- **Profile als Knöpfe:** Alle Kinder stehen alphabetisch als kleine Knöpfe mit Gesicht und Spitzname da, ab zehn Profilen mit Suche. Ein Tippen öffnet das Profil. So bleibt es auch mit einer ganzen Klasse übersichtlich.
 - **Pro Kind:** Lehrplan und Akkord-Lehrplan wählen, festlegen, wie weit das Kind ist (damit öffnen sich auch die Stationen im Abenteuer und die Etappen der Akkord-Tour), die Stufe nach Alter einstellen (Mini etwa 6–8, Junior 9–11, Teen 12–15, Profi ab 16) und sehen, welche Töne schon sitzen, getrennt für Notenlesen, Griffbrett und Akkorde.
 - **Arcade-Vorlagen,** zum Beispiel „1. Lage“, „Nur g-Saite“ oder eigene wie „Hausaufgabe Mia“.
 - **Einstellungen:** Notennamen deutsch (H, B, Fis) oder international (B, B♭, F♯), Vorzeichen als ♯, ♭ oder beides, welche Saite auf dem Griffbrett oben liegt, Ton an oder aus, Darstellung dunkel oder hell, Sprache.

@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -61,8 +64,19 @@ class TeacherScreen extends StatelessWidget {
 
 // ---------------------------------------------------------------- Profile
 
-class _ProfilesTab extends StatelessWidget {
+/// Alle Profile als Pillen (Gesicht + Spitzname, alphabetisch). Erst ein
+/// Antippen öffnet das Profil darunter, so bleibt es auch bei über 30
+/// Kindern übersichtlich (Wunsch des Besitzers). Ab 10 Profilen mit Suche.
+class _ProfilesTab extends StatefulWidget {
   const _ProfilesTab();
+
+  @override
+  State<_ProfilesTab> createState() => _ProfilesTabState();
+}
+
+class _ProfilesTabState extends State<_ProfilesTab> {
+  String? _selected;
+  String _query = '';
 
   @override
   Widget build(BuildContext context) {
@@ -77,15 +91,107 @@ class _ProfilesTab extends StatelessWidget {
         ),
       );
     }
+    final all = [...state.profiles]..sort((a, b) => a.nickname.toLowerCase().compareTo(b.nickname.toLowerCase()));
+    final q = _query.trim().toLowerCase();
+    final shown = q.isEmpty ? all : all.where((p) => p.nickname.toLowerCase().contains(q)).toList();
+    final selected = all.where((p) => p.id == _selected).firstOrNull;
+    final small = context.compact;
     return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [for (final p in state.profiles) _ProfileCard(profile: p)],
+      padding: EdgeInsets.all(small ? 14 : 20),
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                tr('${all.length} Profile', '${all.length} profiles'),
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+            if (all.length >= 10)
+              SizedBox(
+                width: 260,
+                child: TextField(
+                  onChanged: (v) => setState(() => _query = v),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    prefixIcon: const Icon(Icons.search_rounded),
+                    hintText: tr('Spitzname suchen', 'Search nickname'),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final p in shown)
+              _ProfilePill(
+                profile: p,
+                selected: p.id == _selected,
+                onTap: () => setState(() => _selected = p.id == _selected ? null : p.id),
+              ),
+            if (shown.isEmpty)
+              Text(tr('Kein Profil gefunden.', 'No profile found.'), style: body(15, color: SuonaColors.muted)),
+          ],
+        ),
+        const SizedBox(height: 18),
+        if (selected != null)
+          _ProfileCard(key: ValueKey(selected.id), profile: selected)
+        else
+          Text(
+            tr('Tippe ein Profil an, um es zu öffnen.', 'Tap a profile to open it.'),
+            style: body(15, color: SuonaColors.muted),
+          ),
+      ],
+    );
+  }
+}
+
+/// Pille mit Gesicht und Spitzname. Gewählt im Bühnen-Verlauf.
+class _ProfilePill extends StatelessWidget {
+  const _ProfilePill({required this.profile, required this.selected, required this.onTap});
+  final Profile profile;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        gradient: selected ? gradientOf(SuonaColors.brand, horizontal: true) : null,
+        color: selected ? null : SuonaColors.cardHigh,
+        border: selected ? null : Border.all(color: SuonaColors.line),
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(999),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(5, 5, 16, 5),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FaceBadge(profile.look, size: 34),
+                const SizedBox(width: 8),
+                Text(
+                  profile.nickname,
+                  style: body(16, weight: FontWeight.w600, color: selected ? Colors.white : SuonaColors.ink),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
 
 class _ProfileCard extends StatelessWidget {
-  const _ProfileCard({required this.profile});
+  const _ProfileCard({super.key, required this.profile});
   final Profile profile;
 
   @override
@@ -686,6 +792,18 @@ class _AboutTab extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         const UpdateSection(),
+        if (!kIsWeb && Platform.isAndroid) ...[
+          const SizedBox(height: 14),
+          Text(tr('Automatische Updates auf Android', 'Automatic updates on Android'), style: theme.textTheme.titleMedium),
+          const SizedBox(height: 4),
+          Text(
+            tr(
+              'Mit der App Obtainium kommen neue Versionen von selbst: In Obtainium „App hinzufügen“ wählen und github.com/rawkhawk0663/suona eintragen.',
+              'With the Obtainium app, new versions arrive by themselves: in Obtainium choose “Add app” and enter github.com/rawkhawk0663/suona.',
+            ),
+            style: TextStyle(color: SuonaColors.muted),
+          ),
+        ],
         const SizedBox(height: 26),
         Wrap(
           spacing: 12,
